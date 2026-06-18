@@ -1,4 +1,11 @@
 import "./index.css";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import TaskIcon from "@mui/icons-material/Task";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import NewspaperIcon from "@mui/icons-material/Newspaper";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import CampaignIcon from "@mui/icons-material/Campaign";
+import BarChartIcon from "@mui/icons-material/BarChart";
 
 function App() {
   return (
@@ -20,23 +27,19 @@ function App() {
 
         <div className="menu">
 
-          <button>🏠 Dashboard</button>
+          <button><DashboardIcon /> Dashboard</button>
 
-          <button>✅ Actividades</button>
+          <button><TaskIcon /> Actividades</button>
 
-          <button>📅 Agenda</button>
+          <button><CalendarMonthIcon /> Agenda</button>
 
-          <button>📰 Gacetillas</button>
+          <button><NewspaperIcon /> Gacetillas</button>
 
-          <button>📸 Coberturas</button>
+          <button><PhotoCameraIcon /> Coberturas</button>
 
-          <button>📱 Redes Sociales</button>
+          <button><CampaignIcon /> Redes Sociales</button>
 
-          <button>🎥 Streaming</button>
-
-          <button>🤝 Vinculación</button>
-
-          <button>📊 Estadísticas</button>
+          <button><BarChartIcon /> Estadísticas</button>
 
         </div>
 
@@ -53,43 +56,31 @@ function App() {
         <div className="tarjetas">
 
           <div className="tarjeta">
-
-            <div className="numero">12</div>
-
+            <div className="numero">0</div>
             <div className="tituloTarjeta">
               Actividades pendientes
             </div>
-
           </div>
 
           <div className="tarjeta">
-
-            <div className="numero">4</div>
-
+            <div className="numero">0</div>
             <div className="tituloTarjeta">
               Gacetillas
             </div>
-
           </div>
 
           <div className="tarjeta">
-
-            <div className="numero">7</div>
-
+            <div className="numero">0</div>
             <div className="tituloTarjeta">
               Coberturas
             </div>
-
           </div>
 
           <div className="tarjeta">
-
-            <div className="numero">9</div>
-
+            <div className="numero">0</div>
             <div className="tituloTarjeta">
               Redes Sociales
             </div>
-
           </div>
 
         </div>
