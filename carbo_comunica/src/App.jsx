@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// Datos semilla reales de la Escuela Normal Superior Dr. Alejandro Carbó
+// Datos semilla de la Escuela Normal Superior Dr. Alejandro Carbó
 const initialActividades = [
   "Organización Día de la Bandera.",
   "Feria de Ciencias - 26/06.",
@@ -19,7 +19,7 @@ const initialGacetillas = [
 ];
 
 export default function App() {
-  // --- ESTADOS CON INICIALIZACIÓN PEREZOSA (Evita lecturas redundantes de localStorage) ---
+  // --- ESTADOS CON PERSISTENCIA LOCAL ---
   const [actividades, setActividades] = useState(() => {
     const local = localStorage.getItem('carbo_actividades');
     return local ? JSON.parse(local) : initialActividades;
@@ -35,12 +35,11 @@ export default function App() {
     return local ? JSON.parse(local) : initialGacetillas;
   });
 
-  // Estados independientes para el manejo de los formularios de entrada
   const [inputActividad, setInputActividad] = useState('');
   const [inputAgenda, setInputAgenda] = useState('');
   const [inputGacetilla, setInputGacetilla] = useState('');
 
-  // --- EFECTOS DE SINCRONIZACIÓN CON LOCALSTORAGE ---
+  // --- EFECTOS DE SINCRONIZACIÓN ---
   useEffect(() => {
     localStorage.setItem('carbo_actividades', JSON.stringify(actividades));
   }, [actividades]);
@@ -53,8 +52,8 @@ export default function App() {
     localStorage.setItem('carbo_gacetillas', JSON.stringify(gacetillas));
   }, [gacetillas]);
 
-  // --- MANEJADORES DE LOGICA (AGREGAR / ELIMINAR) ---
-  const handleAdd = (e, target, input, setInput, setList) => {
+  // --- MANEJADORES DE LOGICA (ABM) ---
+  const handleAdd = (e, input, setInput, setList) => {
     e.preventDefault();
     if (!input.trim()) return;
     setList(prev => [...prev, input.trim()]);
@@ -66,232 +65,163 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased">
+    <div style={styles.container}>
       
       {/* HEADER INSTITUCIONAL */}
-      <header className="bg-gradient-to-r from-blue-900 to-indigo-950 text-white shadow-md border-b-4 border-amber-500 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-5 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-center sm:text-left">
-            <h1 className="text-2xl font-bold tracking-tight uppercase sm:text-3xl">
-              Carbó Comunica
-            </h1>
-            <p className="text-xs text-blue-200 mt-1 font-medium tracking-wide">
-              Departamento de Comunicación Institucional • ENS Dr. Alejandro Carbó
-            </p>
+      <header style={styles.header}>
+        <div style={styles.headerContent}>
+          <div>
+            <h1 style={styles.title}>Carbó Comunica</h1>
+            <p style={styles.subtitle}>Departamento de Comunicación Institucional • ENS Dr. Alejandro Carbó</p>
           </div>
-          <div className="flex items-center gap-2 bg-blue-950/50 px-4 py-2 rounded-full border border-blue-800">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-xs font-semibold text-emerald-400 tracking-wider uppercase">
-              Terminal Operativa Local
-            </span>
+          <div style={styles.badge}>
+            <span style={styles.badgeDot}></span>
+            <span style={styles.badgeText}>Terminal Operativa Local</span>
           </div>
         </div>
       </header>
 
       {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
-        
-        {/* BANNER INTRODUCTORIO */}
-        <div className="mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Panel de Gestión de Contenidos</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Modificá, agregá o eliminá las novedades en tiempo real. Los cambios se guardan automáticamente de forma local.
-            </p>
-          </div>
+      <main style={styles.main}>
+        <div style={styles.banner}>
+          <h2 style={styles.bannerTitle}>Panel de Gestión de Contenidos</h2>
+          <p style={styles.bannerText}>Modificá, agregá o eliminá las novedades en tiempo real. Los cambios persisten en este navegador de forma gratuita.</p>
         </div>
 
-        {/* REJILLA DE SECCIONES (3 COLUMNAS) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* REJILLA DE SECCIONES */}
+        <div style={styles.grid}>
           
-          {/* SECCIÓN 1: ACTIVIDADES */}
-          <section className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="font-bold text-slate-900 tracking-tight text-lg flex items-center gap-2">
-                <span className="p-1.5 bg-blue-100 text-blue-800 rounded-lg text-sm">📋</span>
-                Actividades Recientes
-              </h3>
+          {/* SECCIÓN: ACTIVIDADES */}
+          <section style={styles.card}>
+            <div style={styles.cardHeader}>
+              <h3 style={styles.cardTitle}>📋 Actividades Recientes</h3>
             </div>
-            
-            <div className="p-5 flex-grow">
-              <form 
-                onSubmit={(e) => handleAdd(e, 'actividades', inputActividad, setInputActividad, setActividades)}
-                className="mb-5 flex gap-2"
-              >
+            <div style={styles.cardBody}>
+              <form onSubmit={(e) => handleAdd(e, inputActividad, setInputActividad, setActividades)} style={styles.form}>
                 <input 
-                  type="text"
-                  placeholder="Nueva actividad..."
+                  type="text" 
+                  placeholder="Nueva actividad..." 
                   value={inputActividad}
                   onChange={(e) => setInputActividad(e.target.value)}
-                  className="flex-grow text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all"
+                  style={styles.input}
                 />
-                <button 
-                  type="submit"
-                  className="bg-blue-900 hover:bg-blue-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors shadow-sm active:scale-95 duration-150"
-                >
-                  +
-                </button>
+                <button type="submit" style={styles.buttonAdd}>+</button>
               </form>
-
-              {actividades.length === 0 ? (
-                <p className="text-sm text-slate-400 italic text-center py-4">No hay actividades registradas.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {actividades.map((item, index) => (
-                    <li key={index} className="flex justify-between items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 group transition-colors hover:bg-slate-100/50">
-                      <span className="text-sm text-slate-700 leading-relaxed">{item}</span>
-                      <button 
-                        onClick={() => handleRemove(index, setActividades)}
-                        className="text-slate-400 hover:text-red-600 font-medium text-xs px-2 py-1 rounded transition-colors duration-150"
-                        title="Eliminar"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <ul style={styles.list}>
+                {actividades.map((item, index) => (
+                  <li key={index} style={styles.listItem}>
+                    <span style={styles.itemText}>{item}</span>
+                    <button onClick={() => handleRemove(index, setActividades)} style={styles.buttonDelete}>✕</button>
+                  </li>
+                ))}
+              </ul>
             </div>
           </section>
 
-          {/* SECCIÓN 2: AGENDA */}
-          <section className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="font-bold text-slate-900 tracking-tight text-lg flex items-center gap-2">
-                <span className="p-1.5 bg-amber-100 text-amber-800 rounded-lg text-sm">📅</span>
-                Agenda Institucional
-              </h3>
+          {/* SECCIÓN: AGENDA */}
+          <section style={styles.card}>
+            <div style={styles.cardHeader}>
+              <h3 style={styles.cardTitle}>📅 Agenda Institucional</h3>
             </div>
-            
-            <div className="p-5 flex-grow">
-              <form 
-                onSubmit={(e) => handleAdd(e, 'agenda', inputAgenda, setInputAgenda, setAgenda)}
-                className="mb-5 flex gap-2"
-              >
+            <div style={styles.cardBody}>
+              <form onSubmit={(e) => handleAdd(e, inputAgenda, setInputAgenda, setAgenda)} style={styles.form}>
                 <input 
-                  type="text"
-                  placeholder="Ej: 26/06 - Evento..."
+                  type="text" 
+                  placeholder="Ej: 26/06 - Evento..." 
                   value={inputAgenda}
                   onChange={(e) => setInputAgenda(e.target.value)}
-                  className="flex-grow text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                  style={styles.input}
                 />
-                <button 
-                  type="submit"
-                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors shadow-sm active:scale-95 duration-150"
-                >
-                  +
-                </button>
+                <button type="submit" style={styles.buttonAdd}>+</button>
               </form>
-
-              {agenda.length === 0 ? (
-                <p className="text-sm text-slate-400 italic text-center py-4">No hay eventos en la agenda.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {agenda.map((item, index) => (
-                    <li key={index} className="flex justify-between items-start gap-3 bg-amber-50/40 p-3 rounded-lg border border-amber-100/40 group transition-colors hover:bg-amber-50/80">
-                      <span className="text-sm text-slate-700 leading-relaxed font-medium">{item}</span>
-                      <button 
-                        onClick={() => handleRemove(index, setAgenda)}
-                        className="text-slate-400 hover:text-red-600 font-medium text-xs px-2 py-1 rounded transition-colors duration-150"
-                        title="Eliminar"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <ul style={styles.list}>
+                {agenda.map((item, index) => (
+                  <li key={index} style={styles.listItem}>
+                    <span style={styles.itemText}><strong>{item}</strong></span>
+                    <button onClick={() => handleRemove(index, setAgenda)} style={styles.buttonDelete}>✕</button>
+                  </li>
+                ))}
+              </ul>
             </div>
           </section>
 
-          {/* SECCIÓN 3: GACETILLAS */}
-          <section className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="font-bold text-slate-900 tracking-tight text-lg flex items-center gap-2">
-                <span className="p-1.5 bg-purple-100 text-purple-800 rounded-lg text-sm">📰</span>
-                Gacetillas emitidas
-              </h3>
+          {/* SECCIÓN: GACETILLAS */}
+          <section style={styles.card}>
+            <div style={styles.cardHeader}>
+              <h3 style={styles.cardTitle}>📰 Gacetillas Emitidas</h3>
             </div>
-            
-            <div className="p-5 flex-grow">
-              <form 
-                onSubmit={(e) => handleAdd(e, 'gacetillas', inputGacetilla, setInputGacetilla, setGacetillas)}
-                className="mb-5 flex gap-2"
-              >
+            <div style={styles.cardBody}>
+              <form onSubmit={(e) => handleAdd(e, inputGacetilla, setInputGacetilla, setGacetillas)} style={styles.form}>
                 <input 
-                  type="text"
-                  placeholder="Título de gacetilla..."
+                  type="text" 
+                  placeholder="Título de gacetilla..." 
                   value={inputGacetilla}
                   onChange={(e) => setInputGacetilla(e.target.value)}
-                  className="flex-grow text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all"
+                  style={styles.input}
                 />
-                <button 
-                  type="submit"
-                  className="bg-purple-900 hover:bg-purple-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors shadow-sm active:scale-95 duration-150"
-                >
-                  +
-                </button>
+                <button type="submit" style={styles.buttonAdd}>+</button>
               </form>
-
-              {gacetillas.length === 0 ? (
-                <p className="text-sm text-slate-400 italic text-center py-4">No hay gacetillas emitidas.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {gacetillas.map((item, index) => (
-                    <li key={index} className="flex justify-between items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 group transition-colors hover:bg-slate-100/50">
-                      <span className="text-sm text-slate-700 leading-relaxed">{item}</span>
-                      <button 
-                        onClick={() => handleRemove(index, setGacetillas)}
-                        className="text-slate-400 hover:text-red-600 font-medium text-xs px-2 py-1 rounded transition-colors duration-150"
-                        title="Eliminar"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <ul style={styles.list}>
+                {gacetillas.map((item, index) => (
+                  <li key={index} style={styles.listItem}>
+                    <span style={styles.itemText}>{item}</span>
+                    <button onClick={() => handleRemove(index, setGacetillas)} style={styles.buttonDelete}>✕</button>
+                  </li>
+                ))}
+              </ul>
             </div>
           </section>
 
         </div>
       </main>
 
-      {/* FOOTER INSTITUCIONAL */}
-      <footer className="bg-slate-900 text-slate-400 text-sm border-t border-slate-800 mt-12">
-        <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-center md:text-left">
-            <p className="font-semibold text-slate-200">Escuela Normal Superior Dr. Alejandro Carbó</p>
-            <p className="text-xs text-slate-500 mt-0.5">Córdoba, Argentina • Plataforma de Uso Interno</p>
+      {/* FOOTER */}
+      <footer style={styles.footer}>
+        <div style={styles.footerContent}>
+          <div>
+            <p style={styles.footerSchool}>Escuela Normal Superior Dr. Alejandro Carbó</p>
+            <p style={styles.footerLocation}>Córdoba, Argentina • Plataforma de Uso Interno</p>
           </div>
-          
-          {/* REDES SOCIALES INSTITUCIONALES */}
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 text-center sm:text-left">
-            <div className="flex items-center gap-2 justify-center sm:justify-start">
-              <span className="text-slate-500 font-bold">IG:</span>
-              <a href="https://instagram.com/carbo.comunica" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline transition-all">
-                @carbo.comunica
-              </a>
-            </div>
-            <div className="flex items-center gap-2 justify-center sm:justify-start">
-              <span className="text-slate-500 font-bold">FB:</span>
-              <span className="text-slate-300">
-                Escuela Normal Superior Dr. Alejandro Carbó
-              </span>
-            </div>
-            <div className="flex items-center gap-2 justify-center sm:justify-start">
-              <span className="text-slate-500 font-bold">Web:</span>
-              <span className="text-slate-300 italic">
-                Sitio web institucional
-              </span>
-            </div>
+          <div style={styles.footerLinks}>
+            <p><strong>IG:</strong> <a href="https://instagram.com/carbo.comunica" target="_blank" rel="noreferrer" style={styles.link}>@carbo.comunica</a></p>
+            <p><strong>FB:</strong> Escuela Normal Superior Dr. Alejandro Carbó</p>
           </div>
-        </div>
-        <div className="bg-slate-950 text-center py-3 text-xs text-slate-600 tracking-wider">
-          Desarrollado con Software de Código Abierto y Licencia Libre
         </div>
       </footer>
-
     </div>
   );
 }
+
+// --- ESTILOS NATIVOS CSS-IN-JS (Garantizan diseño profesional sin librerías externas) ---
+const styles = {
+  container: { fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', display: 'flex', flexDirection: 'column', color: '#334155', margin: 0 },
+  header: { backgroundColor: '#1e3a8a', color: '#ffffff', padding: '20px 40px', borderBottom: '4px solid #f59e0b', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' },
+  headerContent: { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' },
+  title: { margin: 0, fontSize: '28px', fontWeight: 'bold', letterSpacing: '-0.5px' },
+  subtitle: { margin: '5px 0 0 0', fontSize: '13px', color: '#93c5fd' },
+  badge: { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#1e1b4b', padding: '6px 16px', borderRadius: '20px', border: '1px solid #3730a3' },
+  badgeDot: { width: '8px', height: '8px', backgroundColor: '#34d399', borderRadius: '50%' },
+  badgeText: { fontSize: '11px', color: '#34d399', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' },
+  main: { flexGrow: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '40px 20px' },
+  banner: { backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+  bannerTitle: { margin: 0, fontSize: '20px', color: '#0f172a' },
+  bannerText: { margin: '6px 0 0 0', fontSize: '14px', color: '#64748b' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' },
+  card: { backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+  cardHeader: { backgroundColor: '#f8fafc', padding: '16px 20px', borderBottom: '1px solid #e2e8f0' },
+  cardTitle: { margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#1e293b' },
+  cardBody: { padding: '20px', flexGrow: 1 },
+  form: { display: 'flex', gap: '10px', marginBottom: '20px' },
+  input: { flexGrow: 1, padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' },
+  buttonAdd: { backgroundColor: '#1e3a8a', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' },
+  list: { listStyle: 'none', padding: 0, margin: 0 },
+  listItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '8px', marginBottom: '8px', gap: '10px' },
+  itemText: { fontSize: '14px', color: '#334155', lineHeight: '1.5' },
+  buttonDelete: { backgroundColor: 'transparent', color: '#94a3b8', border: 'none', fontSize: '14px', cursor: 'pointer', padding: '4px 8px' },
+  footer: { backgroundColor: '#0f172a', color: '#94a3b8', padding: '32px 20px', marginTop: '40px', borderTop: '1px solid #1e293b' },
+  footerContent: { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px', fontSize: '14px' },
+  footerSchool: { margin: 0, fontWeight: 'bold', color: '#f1f5f9' },
+  footerLocation: { margin: '4px 0 0 0', fontSize: '12px', color: '#475569' },
+  footerLinks: { margin: 0, textAlign: 'right' },
+  link: { color: '#38bdf8', textDecoration: 'none' }
+};
