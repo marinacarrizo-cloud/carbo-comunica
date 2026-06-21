@@ -49,10 +49,6 @@ const initialTareas = [
   { id: 2, texto: "Diseñar señalética institucional para el ingreso de la escuela", responsable: "Juan Pérez", fechaSolicitud: "2026-06-18", fechaLimite: "2026-06-25", fechaRealizada: "", columna: "progreso" }
 ];
 
-// CADENAS DE DATOS DE ALTA FIDELIDAD PARA LOS LOGOS OFICIALES REALES
-const ESCUDO_REAL_BASE64 = "https://i.ibb.co/6Z80W88/Logo-A-Carbo-Blanco.png";
-const LOGO_COMUN_BASE64 = "https://i.ibb.co/2ZzGph6/LOGO-COMUNICACI-N.png";
-
 export default function App() {
   // --- CONTROL DE LOGIN LOCAL ---
   const [usuarioLogueado, setUsuarioLogueado] = useState(() => {
@@ -63,23 +59,23 @@ export default function App() {
 
   // --- ESTADOS CON PERSISTENCIA LOCAL ---
   const [actividades, setActividades] = useState(() => {
-    const local = localStorage.getItem('carbo_actividades_v7');
+    const local = localStorage.getItem('carbo_actividades_v8');
     return local ? JSON.parse(local) : initialActividades;
   });
   const [agenda, setAgenda] = useState(() => {
-    const local = localStorage.getItem('carbo_agenda_v7');
+    const local = localStorage.getItem('carbo_agenda_v8');
     return local ? JSON.parse(local) : initialAgenda;
   });
   const [gacetillas, setGacetillas] = useState(() => {
-    const local = localStorage.getItem('carbo_gacetillas_v7');
+    const local = localStorage.getItem('carbo_gacetillas_v8');
     return local ? JSON.parse(local) : initialGacetillas;
   });
   const [coberturas, setCoberturas] = useState(() => {
-    const local = localStorage.getItem('carbo_coberturas_v7');
+    const local = localStorage.getItem('carbo_coberturas_v8');
     return local ? JSON.parse(local) : initialCoberturas;
   });
   const [tareas, setTareas] = useState(() => {
-    const local = localStorage.getItem('carbo_tareas_v7');
+    const local = localStorage.getItem('carbo_tareas_v8');
     return local ? JSON.parse(local) : initialTareas;
   });
 
@@ -94,7 +90,7 @@ export default function App() {
   const [cobPersona2, setCobPersona2] = useState(PERSONAL_AUTORIZADO[1]); const [cobFuncion2, setCobFuncion2] = useState('');
   const [cobNotas, setCobNotas] = useState('');
 
-  // Control inputs Tareas con las nuevas solicitudes de fecha de Maraina
+  // Control inputs Tareas
   const [nuevaTareaTexto, setNuevaTareaTexto] = useState('');
   const [tareaResp, setTareaResp] = useState(PERSONAL_AUTORIZADO[0]);
   const [tareaSolicitud, setTareaSolicitud] = useState('');
@@ -103,11 +99,11 @@ export default function App() {
   const [tareaFinalizacionManual, setTareaFinalizacionManual] = useState('');
 
   // --- EFECTOS DE SINCRONIZACIÓN ---
-  useEffect(() => { localStorage.setItem('carbo_actividades_v7', JSON.stringify(actividades)); }, [actividades]);
-  useEffect(() => { localStorage.setItem('carbo_agenda_v7', JSON.stringify(agenda)); }, [agenda]);
-  useEffect(() => { localStorage.setItem('carbo_gacetillas_v7', JSON.stringify(gacetillas)); }, [gacetillas]);
-  useEffect(() => { localStorage.setItem('carbo_coberturas_v7', JSON.stringify(coberturas)); }, [coberturas]);
-  useEffect(() => { localStorage.setItem('carbo_tareas_v7', JSON.stringify(tareas)); }, [tareas]);
+  useEffect(() => { localStorage.setItem('carbo_actividades_v8', JSON.stringify(actividades)); }, [actividades]);
+  useEffect(() => { localStorage.setItem('carbo_agenda_v8', JSON.stringify(agenda)); }, [agenda]);
+  useEffect(() => { localStorage.setItem('carbo_gacetillas_v8', JSON.stringify(gacetillas)); }, [gacetillas]);
+  useEffect(() => { localStorage.setItem('carbo_coberturas_v8', JSON.stringify(coberturas)); }, [coberturas]);
+  useEffect(() => { localStorage.setItem('carbo_tareas_v8', JSON.stringify(tareas)); }, [tareas]);
 
   // --- LOGICA DE LOGIN ---
   const handleLogin = (e) => {
@@ -153,6 +149,10 @@ export default function App() {
     setCobEvento(''); setCobFuncion1(''); setCobFuncion2(''); setCobNotas('');
   };
 
+  const handleRemoveCobertura = (id) => {
+    setCoberturas(prev => prev.filter(c => c.id !== id));
+  };
+
   const handleAddTarea = (e) => {
     e.preventDefault();
     if (!nuevaTareaTexto.trim()) return;
@@ -180,9 +180,8 @@ export default function App() {
       if (t.id === id) {
         let fechaFin = t.fechaRealizada;
         if (nuevaColumna === 'completado' && !t.fechaRealizada) {
-          // Si pasa a completado y no tenía fecha, le preguntamos al operador o le asignamos hoy por defecto
-          const customFecha = prompt("Ingresá la fecha de finalización (DD/MM/AAAA) o dejá vacío para poner la fecha de hoy:", hoy);
-          fechaFin = customFecha.trim() || hoy;
+          const customFecha = prompt("Ingresá la fecha de finalización (DD/MM/AAAA) o dejá vacío para hoy:", hoy);
+          fechaFin = customFecha ? (customFecha.trim() || hoy) : hoy;
         } else if (nuevaColumna !== 'completado') {
           fechaFin = '';
         }
@@ -240,7 +239,7 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
     return (
       <div style={{ backgroundColor: '#1e3a8a', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
         <form onSubmit={handleLogin} style={{ backgroundColor: '#fff', padding: '40px', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-          <h2 style={{ color: '#1e3a8a', margin: '0 0 10px 0', fontSize: '24px', font: 'bold' }}>Carbó Comunica</h2>
+          <h2 style={{ color: '#1e3a8a', margin: '0 0 10px 0', fontSize: '24px', fontWeight: 'bold' }}>Carbó Comunica</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 25px 0' }}>Ingresá tu clave operativa del Departamento de Comunicación</p>
           <input 
             type="password" 
@@ -262,23 +261,36 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
   return (
     <div style={styles.container}>
       
-      {/* HEADER INSTITUCIONAL CON LOGOS REALES ENCADENADOS */}
+      {/* HEADER RENOVAO CON ÍCONOS SVG INFAILIBLES QUE NO SE CAEN NUNCA */}
       <header style={styles.header}>
         <div style={styles.headerContent}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <img src={ESCUDO_REAL_BASE64} alt="Escudo Carbó Oficial" style={styles.logoImg} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            {/* Ícono de Escudo Institucional SVG */}
+            <div style={styles.iconContainer}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
             <div>
               <h1 style={styles.title}>Carbó Comunica</h1>
               <p style={styles.subtitle}>Panel Técnico de Control • Operador/a actual: <strong>{usuarioLogueado}</strong></p>
             </div>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <button onClick={generarInformeSemanal} style={styles.buttonReportHeader}>
               📋 Generar Informe Semanal
             </button>
             <button onClick={handleLogout} style={styles.buttonLogout}>Salir ✕</button>
-            <img src={LOGO_COMUN_BASE64} alt="Logo Comunicación Oficial" style={styles.logoImg} />
+            
+            {/* Ícono de Red de Comunicación SVG */}
+            <div style={styles.iconContainerVariant}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 11a9 9 0 0 1 9 9"/>
+                <path d="M4 4a16 16 0 0 1 16 16"/>
+                <circle cx="5" cy="19" r="1"/>
+              </svg>
+            </div>
           </div>
         </div>
       </header>
@@ -286,19 +298,21 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
       {/* CONTENIDO PRINCIPAL */}
       <main style={styles.main}>
         
-        {/* REPOSITORIO DE ENLACES DE TRABAJO RÁPIDO */}
+        {/* REPOSITORIO DE ENLACES DE TRABAJO RÁPIDO CON LOS NUEVOS BOTONES SOLICITADOS */}
         <div style={styles.banner}>
           <h2 style={styles.bannerTitle}>🔗 Enlaces Operativos Directos (Cuentas Oficiales)</h2>
-          <p style={styles.bannerText}>Accesos directos configurados para no interferir con tus sesiones personales de la computadora:</p>
-          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginTop: '15px' }}>
-            <a href="https://drive.google.com/drive/u/1/my-drive" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📂 Drive comunicación.carbo@gmail.com</a>
-            <a href="https://www.canva.com/folder/all-designs" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>🎨 Workspace Canva Carbó</a>
+          <p style={styles.bannerText}>Accesos rápidos y directos del departamento para optimizar la gestión diaria escolar:</p>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '15px' }}>
+            <a href="https://enscarbocordoba.infd.edu.ar/sitio/" target="_blank" rel="noreferrer" style={styles.shortcutBtnCarbo}>🏛️ Web Oficial Instituto Carbó</a>
+            <a href="https://web.whatsapp.com/" target="_blank" rel="noreferrer" style={styles.shortcutBtnWhatsapp}>💬 WhatsApp Web Oficial</a>
+            <a href="https://drive.google.com/drive/u/1/my-drive" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📂 Google Drive Gestión</a>
+            <a href="https://www.canva.com/folder/all-designs" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>🎨 Workspace Canva</a>
             <a href="https://business.facebook.com/" target="_blank" rel="noreferrer" style={styles.shortcutBtnMeta}>📊 Meta Business Suite</a>
-            <a href="https://instagram.com/carbo.comunica" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📸 Instagram Oficial</a>
+            <a href="https://instagram.com/carbo.comunica" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📸 Instagram Institucional</a>
           </div>
         </div>
 
-        {/* MÓDULO 1: DIFFUSIÓN */}
+        {/* MÓDULO 1: DIFUSIÓN */}
         <h2 style={styles.sectionHeader}>📢 Canales de Difusión y Novedades</h2>
         <div style={styles.grid3}>
           {/* ACTIVIDADES */}
@@ -436,7 +450,7 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
           </div>
         </div>
 
-        {/* MÓDULO 3: KANBAN ADAPTABLE PARA PASADO Y FUTURO */}
+        {/* MÓDULO 3: KANBAN ADAPTABLE */}
         <h2 style={styles.sectionHeader}>🛠️ Organizador de Tareas del Equipo</h2>
         <div style={styles.card}>
           <div style={styles.cardHeader}><h3 style={styles.cardTitle}>🎯 Seguimiento Operativo de Prioridades del Equipo</h3></div>
@@ -558,14 +572,14 @@ const styles = {
   headerContent: { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' },
   title: { margin: 0, fontSize: '24px', fontWeight: 'bold', letterSpacing: '-0.5px' },
   subtitle: { margin: '3px 0 0 0', fontSize: '12px', color: '#93c5fd' },
-  logoImg: { height: '55px', width: 'auto', objectFit: 'contain' },
-  badge: { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#1e1b4b', padding: '6px 14px', borderRadius: '20px', border: '1px solid #3730a3' },
-  badgeDot: { width: '8px', height: '8px', backgroundColor: '#34d399', borderRadius: '50%' },
-  badgeText: { fontSize: '10px', color: '#34d399', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' },
+  iconContainer: { backgroundColor: '#ffffff', padding: '8px', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' },
+  iconContainerVariant: { backgroundColor: 'rgba(255,255,255,0.15)', padding: '8px', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center' },
   main: { flexGrow: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '30px 20px' },
   banner: { backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
   bannerTitle: { margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 'bold' },
   bannerText: { margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' },
+  shortcutBtnCarbo: { textDecoration: 'none', backgroundColor: '#1e3a8a', color: '#ffffff', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', border: '1px solid #1e3a8a', boxShadow: '0 2px 4px rgba(30,58,138,0.2)' },
+  shortcutBtnWhatsapp: { textDecoration: 'none', backgroundColor: '#16a34a', color: '#ffffff', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', border: '1px solid #16a34a', boxShadow: '0 2px 4px rgba(22,163,74,0.2)' },
   shortcutBtn: { textDecoration: 'none', backgroundColor: '#f1f5f9', color: '#1e3a8a', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', border: '1px solid #cbd5e1' },
   shortcutBtnMeta: { textDecoration: 'none', backgroundColor: '#e0f2fe', color: '#0369a1', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', border: '1px solid #bae6fd' },
   buttonReportHeader: { backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(16,185,129,0.2)' },
