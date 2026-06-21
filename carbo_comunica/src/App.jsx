@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// Credenciales
+// Credenciales de acceso
 const CLAVES_ACCESO = {
   "carbo2026mar": "Marina Carrizo",
   "carbo2026juan": "Juan Pérez",
@@ -8,8 +8,9 @@ const CLAVES_ACCESO = {
 };
 
 const NIVELES_CARBO = ["Institucional (todos los niveles)", "Nivel Inicial", "Nivel Primario", "Nivel Secundario", "Nivel Superior"];
+const PERSONAL_AUTORIZADO = ["Marina Carrizo", "Juan Pérez", "Equipo General"];
 
-// Datos iniciales
+// Datos semilla
 const initialActividades = [{ fecha: "21/06/2026", nivel: "Nivel Superior", texto: "Feria de Ciencias - Coordinación." }];
 const initialAgenda = [{ fecha: "26/06/2026", nivel: "Nivel Superior", texto: "Feria de Ciencias - 26/06." }];
 const initialGacetillas = [{ fecha: "21/06/2026", nivel: "Nivel Superior", texto: "Invitación Feria de Ciencias." }];
@@ -26,6 +27,12 @@ export default function App() {
   const [gacetillas, setGacetillas] = useState(() => { const local = localStorage.getItem('carbo_gacetillas_v13'); return local ? JSON.parse(local) : initialGacetillas; });
   const [coberturas, setCoberturas] = useState(() => { const local = localStorage.getItem('carbo_coberturas_v13'); return local ? JSON.parse(local) : initialCoberturas; });
   const [tareas, setTareas] = useState(() => { const local = localStorage.getItem('carbo_tareas_v13'); return local ? JSON.parse(local) : initialTareas; });
+
+  useEffect(() => { localStorage.setItem('carbo_actividades_v13', JSON.stringify(actividades)); }, [actividades]);
+  useEffect(() => { localStorage.setItem('carbo_agenda_v13', JSON.stringify(agenda)); }, [agenda]);
+  useEffect(() => { localStorage.setItem('carbo_gacetillas_v13', JSON.stringify(gacetillas)); }, [gacetillas]);
+  useEffect(() => { localStorage.setItem('carbo_coberturas_v13', JSON.stringify(coberturas)); }, [coberturas]);
+  useEffect(() => { localStorage.setItem('carbo_tareas_v13', JSON.stringify(tareas)); }, [tareas]);
 
   const handleLogin = (e) => { e.preventDefault(); if (CLAVES_ACCESO[inputClave.trim()]) { setUsuarioLogueado(CLAVES_ACCESO[inputClave.trim()]); localStorage.setItem('carbo_usuario_sesion', CLAVES_ACCESO[inputClave.trim()]); } else { setErrorLogin(true); } };
   const handleLogout = () => { setUsuarioLogueado(''); localStorage.removeItem('carbo_usuario_sesion'); };
@@ -48,8 +55,7 @@ export default function App() {
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            {/* RUTA ACTUALIZADA */}
-            <img src="/escudo.png" alt="Escudo Carbó Oficial" style={styles.logoImg} />
+            <img src="/escudo.png" alt="Escudo Carbó" style={styles.logoImg} />
             <div>
               <h1 style={styles.title}>Carbó Comunica</h1>
               <p style={styles.subtitle}>Operador/a: <strong>{usuarioLogueado}</strong></p>
@@ -57,19 +63,18 @@ export default function App() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button onClick={handleLogout} style={styles.buttonLogout}>Salir ✕</button>
-            {/* RUTA ACTUALIZADA */}
-            <img src="/comunicacion.png" alt="Logo Comunicación Oficial" style={styles.logoImg} />
+            <img src="/comunicacion.png" alt="Logo Comunicación" style={styles.logoImg} />
           </div>
         </div>
       </header>
 
       <main style={styles.main}>
         <div style={styles.banner}>
-          <h3>🔗 Enlaces Operativos Directos</h3>
+          <h3>🔗 Enlaces Operativos</h3>
           <div style={styles.categoriesContainer}>
             <a href="https://enscarbo-cba.infd.edu.ar/sitio/" target="_blank" rel="noreferrer" style={styles.btnSolidBlue}>🏛️ Web oficial</a>
-            <a href="https://web.whatsapp.com/" target="_blank" rel="noreferrer" style={styles.btnSolidGreen}>💬 WhatsApp Web</a>
-            <a href="https://drive.google.com/drive/u/1/my-drive" target="_blank" rel="noreferrer" style={styles.btnOutline}>📂 Google Drive</a>
+            <a href="https://web.whatsapp.com/" target="_blank" rel="noreferrer" style={styles.btnSolidGreen}>💬 WhatsApp</a>
+            <a href="https://drive.google.com/drive/u/1/my-drive" target="_blank" rel="noreferrer" style={styles.btnOutline}>📂 Drive</a>
           </div>
         </div>
       </main>
@@ -88,7 +93,7 @@ const styles = {
   main: { maxWidth: '1200px', margin: '20px auto', padding: '20px' },
   banner: { backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' },
   categoriesContainer: { display: 'flex', gap: '15px', marginTop: '15px' },
-  btnSolidBlue: { backgroundColor: '#1e3a8a', color: '#fff', padding: '10px 15px', textDecoration: 'none', borderRadius: '5px' },
-  btnSolidGreen: { backgroundColor: '#16a34a', color: '#fff', padding: '10px 15px', textDecoration: 'none', borderRadius: '5px' },
-  btnOutline: { border: '1px solid #1e3a8a', color: '#1e3a8a', padding: '10px 15px', textDecoration: 'none', borderRadius: '5px' }
+  btnSolidBlue: { backgroundColor: '#1e3a8a', color: '#fff', padding: '10px 15px', textDecoration: 'none', borderRadius: '5px', fontSize: '14px' },
+  btnSolidGreen: { backgroundColor: '#16a34a', color: '#fff', padding: '10px 15px', textDecoration: 'none', borderRadius: '5px', fontSize: '14px' },
+  btnOutline: { border: '1px solid #1e3a8a', color: '#1e3a8a', padding: '10px 15px', textDecoration: 'none', borderRadius: '5px', fontSize: '14px' }
 };
