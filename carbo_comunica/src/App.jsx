@@ -25,7 +25,7 @@ const initialGacetillas = [
   { fecha: "19/06/2026", nivel: "Institucional (todos los niveles)", texto: "Día de la Bandera." }
 ];
 const initialCoberturas = [
-  { id: 1, fecha: "20/06/2026", evento: "Acto Día de la Bandera", personal: [ { nombre: "Juan Pérez", funcion: "Registró fotos y videos" }, { nombre: "Marina Carrizo", funcion: "Maestra de ceremonias / Locutora" } ], notas: "Cobertura en vivo realizada." }
+  { id: 1, evento: "Acto Día de la Bandera", personal: [ { nombre: "Juan Pérez", funcion: "Registró fotos y videos" }, { nombre: "Marina Carrizo", funcion: "Maestra de ceremonias / Locutora" } ], notas: "Cobertura en vivo realizada." }
 ];
 const initialTareas = [
   { id: 1, texto: "Coordinar los resultados de Formación Situada", responsable: "Marina Carrizo", fechaSolicitud: "2026-02-15", fechaLimite: "2026-02-28", fechaRealizada: "28/02/2026", columna: "completado" },
@@ -46,14 +46,7 @@ export default function App() {
   const [textAct, setTextAct] = useState(''); const [dateAct, setDateAct] = useState(''); const [nivelAct, setNivelAct] = useState(NIVELES_CARBO[0]);
   const [textAge, setTextAge] = useState(''); const [dateAge, setDateAge] = useState(''); const [nivelAge, setNivelAge] = useState(NIVELES_CARBO[0]);
   const [textGac, setTextGac] = useState(''); const [dateGac, setDateGac] = useState(''); const [nivelGac, setNivelGac] = useState(NIVELES_CARBO[0]);
-  
-  // NUEVO ESTADO PARA FECHA DE COBERTURA
-  const [cobFecha, setCobFecha] = useState('');
-  const [cobEvento, setCobEvento] = useState('');
-  const [cobPersona1, setCobPersona1] = useState(PERSONAL_AUTORIZADO[0]); const [cobFuncion1, setCobFuncion1] = useState('');
-  const [cobPersona2, setCobPersona2] = useState(PERSONAL_AUTORIZADO[1]); const [cobFuncion2, setCobFuncion2] = useState('');
-  const [cobNotas, setCobNotas] = useState('');
-
+  const [cobEvento, setCobEvento] = useState(''); const [cobPersona1, setCobPersona1] = useState(PERSONAL_AUTORIZADO[0]); const [cobFuncion1, setCobFuncion1] = useState(''); const [cobPersona2, setCobPersona2] = useState(PERSONAL_AUTORIZADO[1]); const [cobFuncion2, setCobFuncion2] = useState(''); const [cobNotas, setCobNotas] = useState('');
   const [nuevaTareaTexto, setNuevaTareaTexto] = useState(''); const [tareaResp, setTareaResp] = useState(PERSONAL_AUTORIZADO[0]); const [tareaSolicitud, setTareaSolicitud] = useState(''); const [tareaLimite, setTareaLimite] = useState(''); const [columnaInicial, setColumnaInicial] = useState('pendiente'); const [tareaFinalizacionManual, setTareaFinalizacionManual] = useState('');
 
   useEffect(() => { localStorage.setItem('carbo_actividades_v12', JSON.stringify(actividades)); }, [actividades]);
@@ -62,7 +55,12 @@ export default function App() {
   useEffect(() => { localStorage.setItem('carbo_coberturas_v12', JSON.stringify(coberturas)); }, [coberturas]);
   useEffect(() => { localStorage.setItem('carbo_tareas_v12', JSON.stringify(tareas)); }, [tareas]);
 
-  const handleLogin = (e) => { e.preventDefault(); const nombreUsuario = CLAVES_ACCESO[inputClave.trim()]; if (nombreUsuario) { setUsuarioLogueado(nombreUsuario); localStorage.setItem('carbo_usuario_sesion', nombreUsuario); setErrorLogin(false); } else { setErrorLogin(true); } };
+  const handleLogin = (e) => {
+    e.preventDefault();
+    const nombreUsuario = CLAVES_ACCESO[inputClave.trim()];
+    if (nombreUsuario) { setUsuarioLogueado(nombreUsuario); localStorage.setItem('carbo_usuario_sesion', nombreUsuario); setErrorLogin(false); } 
+    else { setErrorLogin(true); }
+  };
   const handleLogout = () => { setUsuarioLogueado(''); localStorage.removeItem('carbo_usuario_sesion'); };
 
   const handleAddCanal = (e, text, date, nivel, setText, setDate, setNivel, setList) => {
@@ -81,8 +79,8 @@ export default function App() {
     const personalArray = [];
     if (cobPersona1) personalArray.push({ nombre: cobPersona1, funcion: cobFuncion1.trim() || 'Cobertura General' });
     if (cobPersona2) personalArray.push({ nombre: cobPersona2, funcion: cobFuncion2.trim() || 'Cobertura General' });
-    setCoberturas(prev => [{ id: Date.now(), fecha: cobFecha, evento: cobEvento.trim(), personal: personalArray, notas: cobNotas.trim() }, ...prev]);
-    setCobFecha(''); setCobEvento(''); setCobFuncion1(''); setCobFuncion2(''); setCobNotas('');
+    setCoberturas(prev => [{ id: Date.now(), evento: cobEvento.trim(), personal: personalArray, notas: cobNotas.trim() }, ...prev]);
+    setCobEvento(''); setCobFuncion1(''); setCobFuncion2(''); setCobNotas('');
   };
 
   const handleRemoveCobertura = (id) => setCoberturas(prev => prev.filter(c => c.id !== id));
@@ -115,8 +113,13 @@ export default function App() {
   const generarInformeSemanal = () => {
     const tareasListas = tareas.filter(t => t.columna === 'completado').map(t => `• Tarea: ${t.texto}\n  [Responsable: ${t.responsable} | Solicitada: ${t.fechaSolicitud} | Límite: ${t.fechaLimite} | Finalizada: ${t.fechaRealizada}]`).join('\n') || '• Sin tareas finalizadas.';
     const gacetillasListas = gacetillas.map(g => `• [${g.nivel}] ${g.texto} (${g.fecha})`).join('\n') || '• No se emitieron gacetillas.';
-    const coberturasListas = coberturas.map(c => `• Evento: ${c.evento} (${c.fecha})\n  [Roles: ${c.personal.map(p => `${p.nombre} [${p.funcion}]`).join(', ')}]`).join('\n') || '• No se registraron coberturas.';
-    const textoInforme = `INFORME SEMANAL DE GESTIÓN INSTITUCIONAL\nDEPARTAMENTO DE COMUNICACIÓN - ENS DR. ALEJANDRO CARBÓ\n\n1. TAREAS FINALIZADAS:\n${tareasListas}\n\n2. GACETILLAS EMITIDAS:\n${gacetillasListas}\n\n3. COBERTURAS REALIZADAS:\n${coberturasListas}`;
+    const coberturasListas = coberturas.map(c => {
+      const personalStr = c.personal.map(p => `${p.nombre} [${p.funcion || p.function}]`).join(', ');
+      return `• Evento: ${c.evento}\n  [Roles: ${personalStr} ${c.notas ? `| Notas: ${c.notas}` : ''}]`;
+    }).join('\n') || '• No se registraron coberturas.';
+
+    const textoInforme = `INFORME SEMANAL DE GESTIÓN INSTITUCIONAL\nDEPARTAMENTO DE COMUNICACIÓN - ENS DR. ALEJANDRO CARBÓ\n\n1. ACCIONES Y TAREAS FINALIZADAS:\n${tareasListas}\n\n2. GACETILLAS EMITIDAS:\n${gacetillasListas}\n\n3. COBERTURAS REALIZADAS:\n${coberturasListas}`;
+
     const ventanaInforme = window.open('', '_blank', 'width=700,height=650');
     ventanaInforme.document.write(`<html><body><textarea style="width:100%; height:90%;">${textoInforme}</textarea></body></html>`);
   };
@@ -154,38 +157,29 @@ export default function App() {
 
       <main style={styles.main}>
         <div style={styles.grid}>
+          {/* Actividades */}
           <div style={styles.card}>
             <h4>Actividades</h4>
             <form onSubmit={(e) => handleAddCanal(e, textAct, dateAct, nivelAct, setTextAct, setDateAct, setNivelAct, setActividades)}>
               <input value={textAct} onChange={(e) => setTextAct(e.target.value)} placeholder="Actividad" />
               <button type="submit">Agregar</button>
             </form>
-            {actividades.map((a, i) => <div key={i}>{a.fecha} - {a.texto} <button onClick={() => handleRemoveSimple(i, setActividades)}>X</button></div>)}
+            {actividades.map((a, i) => <div key={i}>{a.texto} <button onClick={() => handleRemoveSimple(i, setActividades)}>X</button></div>)}
           </div>
-          
+          {/* Agenda */}
           <div style={styles.card}>
             <h4>Agenda</h4>
             <form onSubmit={(e) => handleAddCanal(e, textAge, dateAge, nivelAge, setTextAge, setDateAge, setNivelAge, setAgenda)}>
               <input value={textAge} onChange={(e) => setTextAge(e.target.value)} placeholder="Evento" />
               <button type="submit">Agregar</button>
             </form>
-            {agenda.map((a, i) => <div key={i}>{a.fecha} - {a.texto} <button onClick={() => handleRemoveSimple(i, setAgenda)}>X</button></div>)}
+            {agenda.map((a, i) => <div key={i}>{a.texto} <button onClick={() => handleRemoveSimple(i, setAgenda)}>X</button></div>)}
           </div>
-
+          {/* Tareas */}
           <div style={styles.card}>
             <h4>Tareas (Kanban)</h4>
-            {tareas.map((t, i) => <div key={i}>{t.texto} <button onClick={() => handleRemoveTarea(t.id)}>X</button></div>)}
+            {tareas.map((t, i) => <div key={i}>{t.texto} - {t.columna} <button onClick={() => handleRemoveTarea(t.id)}>X</button></div>)}
           </div>
-        </div>
-
-        <div style={{...styles.card, marginTop: '20px'}}>
-            <h4>Coberturas y Planificación</h4>
-            <form onSubmit={handleAddCobertura} style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
-                <input type="date" value={cobFecha} onChange={(e) => setCobFecha(e.target.value)} />
-                <input value={cobEvento} onChange={(e) => setCobEvento(e.target.value)} placeholder="Evento" />
-                <button type="submit">Registrar Cobertura</button>
-            </form>
-            {coberturas.map(c => <div key={c.id}>{c.fecha} - {c.evento} <button onClick={() => handleRemoveCobertura(c.id)}>X</button></div>)}
         </div>
       </main>
     </div>
