@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
-// Credenciales operativas locales (Sin servidores de pago)
+// Credenciales operativas locales
 const CLAVES_ACCESO = {
   "carbo2026mar": "Marina Carrizo",
-  "carbo2026juan": "Juan Pérez"
+  "carbo2026juan": "Juan Pérez",
+  "carbo2026dir": "Prof. Lic. Marcela Rosana Quevedo (Directora de la Unidad Académica)"
 };
 
 // Opciones de niveles educativos de la escuela
@@ -15,10 +16,17 @@ const NIVELES_CARBO = [
   "Nivel Superior"
 ];
 
+// Opciones cerradas de Personal autorizado
+const PERSONAL_AUTORIZADO = [
+  "Marina Carrizo",
+  "Juan Pérez",
+  "Equipo General"
+];
+
 // Datos semilla iniciales estructurados
 const initialActividades = [
   { fecha: "21/06/2026", nivel: "Nivel Superior", texto: "Feria de Ciencias - Coordinación del Nivel." },
-  { fecha: "19/06/2026", fill: "Institucional (todos los niveles)", texto: "Organización Día de la Bandera." }
+  { fecha: "19/06/2026", nivel: "Institucional (todos los niveles)", texto: "Organización Día de la Bandera." }
 ];
 
 const initialAgenda = [
@@ -49,48 +57,48 @@ export default function App() {
 
   // --- ESTADOS CON PERSISTENCIA LOCAL ---
   const [actividades, setActividades] = useState(() => {
-    const local = localStorage.getItem('carbo_actividades_v3');
+    const local = localStorage.getItem('carbo_actividades_v4');
     return local ? JSON.parse(local) : initialActividades;
   });
   const [agenda, setAgenda] = useState(() => {
-    const local = localStorage.getItem('carbo_agenda_v3');
+    const local = localStorage.getItem('carbo_agenda_v4');
     return local ? JSON.parse(local) : initialAgenda;
   });
   const [gacetillas, setGacetillas] = useState(() => {
-    const local = localStorage.getItem('carbo_gacetillas_v3');
+    const local = localStorage.getItem('carbo_gacetillas_v4');
     return local ? JSON.parse(local) : initialGacetillas;
   });
   const [coberturas, setCoberturas] = useState(() => {
-    const local = localStorage.getItem('carbo_coberturas_v3');
+    const local = localStorage.getItem('carbo_coberturas_v4');
     return local ? JSON.parse(local) : initialCoberturas;
   });
   const [tareas, setTareas] = useState(() => {
-    const local = localStorage.getItem('carbo_tareas_v3');
+    const local = localStorage.getItem('carbo_tareas_v4');
     return local ? JSON.parse(local) : initialTareas;
   });
 
-  // Control de inputs simples (Con fecha y nivel)
+  // Control de inputs simples
   const [textAct, setTextAct] = useState(''); const [dateAct, setDateAct] = useState(''); const [nivelAct, setNivelAct] = useState(NIVELES_CARBO[0]);
   const [textAge, setTextAge] = useState(''); const [dateAge, setDateAge] = useState(''); const [nivelAge, setNivelAge] = useState(NIVELES_CARBO[0]);
   const [textGac, setTextGac] = useState(''); const [dateGac, setDateGac] = useState(''); const [nivelGac, setNivelGac] = useState(NIVELES_CARBO[0]);
 
-  // Control inputs Cobertura
+  // Control inputs Cobertura cerrados
   const [cobEvento, setCobEvento] = useState('');
-  const [cobPersona1, setCobPersona1] = useState(''); const [cobFuncion1, setCobFuncion1] = useState('');
-  const [cobPersona2, setCobPersona2] = useState(''); const [cobFuncion2, setCobFuncion2] = useState('');
+  const [cobPersona1, setCobPersona1] = useState(PERSONAL_AUTORIZADO[0]); const [cobFuncion1, setCobFuncion1] = useState('');
+  const [cobPersona2, setCobPersona2] = useState(PERSONAL_AUTORIZADO[1]); const [cobFuncion2, setCobFuncion2] = useState('');
   const [cobNotas, setCobNotas] = useState('');
 
   // Control inputs Tareas
   const [nuevaTareaTexto, setNuevaTareaTexto] = useState('');
-  const [tareaResp, setTareaResp] = useState('Marina Carrizo');
+  const [tareaResp, setTareaResp] = useState(PERSONAL_AUTORIZADO[0]);
   const [tareaLimite, setTareaLimite] = useState('');
 
   // --- EFECTOS DE SINCRONIZACIÓN ---
-  useEffect(() => { localStorage.setItem('carbo_actividades_v3', JSON.stringify(actividades)); }, [actividades]);
-  useEffect(() => { localStorage.setItem('carbo_agenda_v3', JSON.stringify(agenda)); }, [agenda]);
-  useEffect(() => { localStorage.setItem('carbo_gacetillas_v3', JSON.stringify(gacetillas)); }, [gacetillas]);
-  useEffect(() => { localStorage.setItem('carbo_coberturas_v3', JSON.stringify(coberturas)); }, [coberturas]);
-  useEffect(() => { localStorage.setItem('carbo_tareas_v3', JSON.stringify(tareas)); }, [tareas]);
+  useEffect(() => { localStorage.setItem('carbo_actividades_v4', JSON.stringify(actividades)); }, [actividades]);
+  useEffect(() => { localStorage.setItem('carbo_agenda_v4', JSON.stringify(agenda)); }, [agenda]);
+  useEffect(() => { localStorage.setItem('carbo_gacetillas_v4', JSON.stringify(gacetillas)); }, [gacetillas]);
+  useEffect(() => { localStorage.setItem('carbo_coberturas_v4', JSON.stringify(coberturas)); }, [coberturas]);
+  useEffect(() => { localStorage.setItem('carbo_tareas_v4', JSON.stringify(tareas)); }, [tareas]);
 
   // --- LOGICA DE LOGIN ---
   const handleLogin = (e) => {
@@ -127,12 +135,14 @@ export default function App() {
   const handleAddCobertura = (e) => {
     e.preventDefault();
     if (!cobEvento.trim()) return;
+    
     const personalArray = [];
-    if (cobPersona1.trim()) personalArray.push({ nombre: cobPersona1.trim(), funcion: cobFuncion1.trim() || 'Cobertura' });
-    if (cobPersona2.trim()) personalArray.push({ nombre: cobPersona2.trim(), funcion: cobFuncion2.trim() || 'Cobertura' });
-    const nueva = { id: Date.now(), evento: cobEvento.trim(), personal: personalArray.length > 0 ? personalArray : [{ nombre: usuarioLogueado, funcion: 'Cobertura General' }], notas: cobNotas.trim() };
+    if (cobPersona1) personalArray.push({ nombre: cobPersona1, funcion: cobFuncion1.trim() || 'Cobertura General' });
+    if (cobPersona2) personalArray.push({ nombre: cobPersona2, funcion: cobFuncion2.trim() || 'Cobertura General' });
+
+    const nueva = { id: Date.now(), evento: cobEvento.trim(), personal: personalArray, notas: cobNotas.trim() };
     setCoberturas(prev => [nueva, ...prev]);
-    setCobEvento(''); setCobPersona1(''); setCobFuncion1(''); setCobPersona2(''); setCobFuncion2(''); setCobNotas('');
+    setCobEvento(''); setCobFuncion1(''); setCobFuncion2(''); setCobNotas('');
   };
 
   const handleAddTarea = (e) => {
@@ -154,7 +164,7 @@ export default function App() {
     const gacetillasListas = gacetillas.map(g => `• [${g.nivel}] ${g.texto} (${g.fecha})`).join('\n') || '• No se emitieron gacetillas.';
     const coberturasListas = coberturas.map(c => {
       const personalStr = c.personal.map(p => `${p.nombre} [${p.funcion}]`).join(', ');
-      return `• Evento: ${c.evento}\n  [Roles: ${personalStr} ${c.notes || c.notas ? `| Notas: ${c.notes || c.notas}` : ''}]`;
+      return `• Evento: ${c.evento}\n  [Roles: ${personalStr} ${c.notas ? `| Notas: ${c.notas}` : ''}]`;
     }).join('\n') || '• No se registraron coberturas.';
 
     const textoInforme = `===========================================================
@@ -172,7 +182,7 @@ ${gacetillasListas}
 ${coberturasListas}
 
 -----------------------------------------------------------
-Generado automáticamente por el equipo de comunicación del Carbó.`;
+Generado automáticamente por el departamento de comunicación del Carbó.`;
 
     const ventanaInforme = window.open('', '_blank', 'width=650,height=650');
     ventanaInforme.document.write(`
@@ -180,7 +190,7 @@ Generado automáticamente por el equipo de comunicación del Carbó.`;
         <head><title>Informe Semanal Carbó</title></head>
         <body style="font-family:monospace; padding:25px; background:#f8fafc; color:#0f172a; line-height:1.5;">
           <h3 style="font-family:sans-serif; margin-top:0; color:#1e3a8a;">📋 Reporte Semanal Generado</h3>
-          <p style="font-family:sans-serif; font-size:13px; color:#475569;">Copiá el contenido del cuadro de abajo y pegalo directamente en tu WhatsApp o nota de elevación a dirección.</p>
+          <p style="font-family:sans-serif; font-size:13px; color:#475569;">Copiá el contenido del cuadro de abajo y pegalo directamente en tu WhatsApp o nota de elevación.</p>
           <textarea style="width:100%; height:430px; padding:15px; font-family:monospace; font-size:12px; border:1px solid #cbd5e1; border-radius:8px; background:#fff;" readonly>${textoInforme}</textarea>
           <br/><button onclick="window.close()" style="margin-top:15px; padding:10px 22px; font-family:sans-serif; background:#1e3a8a; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">Entendido, Cerrar</button>
         </body>
@@ -188,7 +198,6 @@ Generado automáticamente por el equipo de comunicación del Carbó.`;
     `);
   };
 
-  // --- VISTA ANTES DE LOGUEARSE ---
   if (!usuarioLogueado) {
     return (
       <div style={{ backgroundColor: '#1e3a8a', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
@@ -244,7 +253,7 @@ Generado automáticamente por el equipo de comunicación del Carbó.`;
           <h2 style={styles.bannerTitle}>🔗 Enlaces Operativos Directos (Cuentas Oficiales)</h2>
           <p style={styles.bannerText}>Accesos directos configurados para no interferir con tus sesiones personales de la computadora:</p>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginTop: '15px' }}>
-            <a href="https://drive.google.com/drive/u/1/my-drive" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📂 Drive comunicacion.carbo@gmail.com</a>
+            <a href="https://drive.google.com/drive/u/1/my-drive" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📂 Drive comunicación.carbo@gmail.com</a>
             <a href="https://www.canva.com/folder/all-designs" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>🎨 Workspace Canva Carbó</a>
             <a href="https://business.facebook.com/" target="_blank" rel="noreferrer" style={styles.shortcutBtnMeta}>📊 Meta Business Suite</a>
             <a href="https://instagram.com/carbo.comunica" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📸 Instagram Oficial</a>
@@ -340,7 +349,7 @@ Generado automáticamente por el equipo de comunicación del Carbó.`;
           </section>
         </div>
 
-        {/* MÓDULO 2: COBERTURAS CON ROLES ESPECÍFICOS */}
+        {/* MÓDULO 2: COBERTURAS CON MENÚS CERRADOS */}
         <h2 style={styles.sectionHeader}>📹 Planificación y Cobertura de Eventos</h2>
         <div style={styles.card}>
           <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📍 Registro de Roles y Trabajos Específicos del Personal</h3></div>
@@ -352,16 +361,20 @@ Generado automáticamente por el equipo de comunicación del Carbó.`;
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', borderTop: '1px dashed #cbd5e1', paddingTop: '10px' }}>
-                <input type="text" placeholder="Personal 1 (Ej: Prof. Juan Pérez)" value={cobPersona1} onChange={(e) => setCobPersona1(e.target.value)} style={styles.input}/>
-                <input type="text" placeholder="Trabajo que realizó (Ej: Registró fotos y videos)" value={cobFuncion1} onChange={(e) => setCobFuncion1(e.target.value)} style={styles.input}/>
+                <select value={cobPersona1} onChange={(e) => setCobPersona1(e.target.value)} style={styles.select}>
+                  {PERSONAL_AUTORIZADO.map((p, i) => <option key={i} value={p}>{p}</option>)}
+                </select>
+                <input type="text" placeholder="Trabajo realizado por Personal 1 (Ej: Saco fotos)" value={cobFuncion1} onChange={(e) => setCobFuncion1(e.target.value)} style={styles.input}/>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                <input type="text" placeholder="Personal 2 (Ej: Marina Carrizo)" value={cobPersona2} onChange={(e) => setCobPersona2(e.target.value)} style={styles.input}/>
-                <input type="text" placeholder="Trabajo que realizó (Ej: Maestra de ceremonias/locutora)" value={cobFuncion2} onChange={(e) => setCobFuncion2(e.target.value)} style={styles.input}/>
+                <select value={cobPersona2} onChange={(e) => setCobPersona2(e.target.value)} style={styles.select}>
+                  {PERSONAL_AUTORIZADO.map((p, i) => <option key={i} value={p}>{p}</option>)}
+                </select>
+                <input type="text" placeholder="Trabajo realizado por Personal 2 (Ej: Maestra de ceremonias)" value={cobFuncion2} onChange={(e) => setCobFuncion2(e.target.value)} style={styles.input}/>
               </div>
               
-              <button type="submit" style={{ ...styles.buttonAdd, alignSelf: 'flex-end', padding: '10px 25px' }}>Registrar Registro de Cobertura</button>
+              <button type="submit" style={{ ...styles.buttonAdd, alignSelf: 'flex-end', padding: '10px 25px' }}>Registrar Cobertura</button>
             </form>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
@@ -372,7 +385,7 @@ Generado automáticamente por el equipo de comunicación del Carbó.`;
                     <button onClick={() => handleRemoveCobertura(c.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '14px' }}>✕</button>
                   </div>
                   <div style={{ backgroundColor: '#ffffff', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '10px' }}>
-                    <p style={{ margin: '0 0 5px 0', fontSize: '12px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' }}>Trabajo de Campo Desarrollado:</p>
+                    <p style={{ margin: '0 0 5px 0', fontSize: '12px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' }}>Trabajo Desarrollado:</p>
                     {c.personal.map((p, i) => (
                       <p key={i} style={{ margin: '4px 0', fontSize: '13px', color: '#334155' }}>
                         👤 <strong>{p.nombre}:</strong> {p.funcion}
@@ -386,7 +399,7 @@ Generado automáticamente por el equipo de comunicación del Carbó.`;
           </div>
         </div>
 
-        {/* MÓDULO 3: PANEL KANBAN REFACTORIZADO CON FECHAS Y RESPONSABLES */}
+        {/* MÓDULO 3: PANEL KANBAN REFACTORIZADO (COLUMNA FINALIZADAS) */}
         <h2 style={styles.sectionHeader}>🛠️ Organizador de Tareas del Equipo</h2>
         <div style={styles.card}>
           <div style={styles.cardHeader}><h3 style={styles.cardTitle}>🎯 Seguimiento Operativo de Prioridades del Equipo</h3></div>
@@ -396,9 +409,7 @@ Generado automáticamente por el equipo de comunicación del Carbó.`;
               <input type="text" placeholder="Asunto o descripción de la tarea..." value={nuevaTareaTexto} onChange={(e) => setNuevaTareaTexto(e.target.value)} style={{ ...styles.input, flex: '2 1 300px' }} required/>
               
               <select value={tareaResp} onChange={(e) => setTareaResp(e.target.value)} style={styles.select}>
-                <option value="Marina Carrizo">Marina Carrizo</option>
-                <option value="Juan Pérez">Juan Pérez</option>
-                <option value="Equipo General">Equipo General</option>
+                {PERSONAL_AUTORIZADO.map((p, i) => <option key={i} value={p}>{p}</option>)}
               </select>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -490,7 +501,7 @@ const styles = {
   title: { margin: 0, fontSize: '24px', fontWeight: 'bold', letterSpacing: '-0.5px' },
   subtitle: { margin: '3px 0 0 0', fontSize: '12px', color: '#93c5fd' },
   logoImg: { height: '55px', width: 'auto', objectFit: 'contain' },
-  badge: { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#1e1b4b', padding: '6px 14px', borderRadius: '20px', border: '1px solid #3730a3' },
+  badge: { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#1e1b4b', padding: '6px 16px', borderRadius: '20px', border: '1px solid #3730a3' },
   badgeDot: { width: '8px', height: '8px', backgroundColor: '#34d399', borderRadius: '50%' },
   badgeText: { fontSize: '10px', color: '#34d399', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' },
   main: { flexGrow: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '30px 20px' },
