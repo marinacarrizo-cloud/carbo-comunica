@@ -29,7 +29,6 @@ const initialTareas = [
   { id: 3, texto: "Actualizar cartelera del Pabellón Argentina", columna: "completado" }
 ];
 
-// Gráficos optimizados integrados en código para evitar pérdidas de rutas en servidores externos
 const ESCUDO_CARBO_BASE64 = "https://images.vfl.ru/ii/1718989528/76974753/38692795.png";
 const LOGO_DPTO_BASE64 = "https://images.vfl.ru/ii/1718989569/271165bc/38692801.png";
 
@@ -56,17 +55,12 @@ export default function App() {
     return local ? JSON.parse(local) : initialTareas;
   });
 
-  // Control de inputs
   const [inputActividad, setInputActividad] = useState('');
   const [inputAgenda, setInputAgenda] = useState('');
   const [inputGacetilla, setInputGacetilla] = useState('');
-
-  // Control inputs Cobertura
   const [cobEvento, setCobEvento] = useState('');
   const [cobResp, setCobResp] = useState('');
   const [cobNotas, setCobNotas] = useState('');
-
-  // Control input Tareas
   const [nuevaTareaTexto, setNuevaTareaTexto] = useState('');
 
   // --- EFECTOS DE SINCRONIZACIÓN ---
@@ -120,6 +114,40 @@ export default function App() {
     setTareas(prev => prev.filter(t => t.id !== id));
   };
 
+  // --- FUNCIÓN GENERADORA DE INFORME AUTOMÁTICO ---
+  const generarInformeSemanal = () => {
+    const tareasListas = tareas.filter(t => t.columna === 'completado').map(t => `• ${t.texto}`).join('\n') || '• Sin novedades esta semana.';
+    const tareasEnProceso = tareas.filter(t => t.columna === 'progreso').map(t => `• ${t.texto}`).join('\n') || '• Sin tareas en desarrollo.';
+    const gacetillasListas = gacetillas.map(g => `• ${g}`).join('\n') || '• No se emitieron gacetillas.';
+    const coberturasRealizadas = coberturas.filter(c => c.estado === 'Completado').map(c => `• Evento: ${c.evento} (Responsable: ${c.responsable})`).join('\n') || '• No hubo coberturas finalizadas.';
+
+    const textoInforme = `=========================================
+📝 INFORME SEMANAL DE GESTIÓN INSTITUCIONAL
+DEPARTAMENTO DE COMUNICACIÓN - ENS DR. ALEJANDRO CARBÓ
+=========================================
+
+1. TAREAS Y CONTENIDOS PUBLICADOS/COMPLETADOS:
+${tareasListas}
+
+2. GACETILLAS EMITIDAS:
+${gacetillasListas}
+
+3. COBERTURAS DE EVENTOS REALIZADAS:
+${coberturasRealizadas}
+
+4. EN DESARROLLO / PRÓXIMA SEMANA:
+${tareasEnProceso}
+
+-----------------------------------------
+Generado automáticamente desde la Terminal Interna de Carbó Comunica.`;
+
+    alert(textoInforme);
+    // Intenta copiar directamente en el portapapeles para hacer Ctrl+V
+    navigator.clipboard.writeText(textoInforme).then(() => {
+      alert("¡Informe copiado automáticamente al portapapeles! Ya podés pegarlo en Word, WhatsApp o Mail.");
+    }).catch(() => {});
+  };
+
   return (
     <div style={styles.container}>
       
@@ -127,12 +155,7 @@ export default function App() {
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <img 
-              src={ESCUDO_CARBO_BASE64} 
-              alt="Escudo Escuela Normal Superior Dr. Alejandro Carbó" 
-              style={styles.logoImg}
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
+            <img src={ESCUDO_CARBO_BASE64} alt="Escudo Carbó" style={styles.logoImg} onError={(e) => { e.target.style.display = 'none'; }} />
             <div>
               <h1 style={styles.title}>Carbó Comunica</h1>
               <p style={styles.subtitle}>Sistema de Gestión Integral para el Departamento de Comunicación • ENS Dr. Alejandro Carbó</p>
@@ -143,12 +166,7 @@ export default function App() {
               <span style={styles.badgeDot}></span>
               <span style={styles.badgeText}>Terminal Interna Activa</span>
             </div>
-            <img 
-              src={LOGO_DPTO_BASE64} 
-              alt="Logo Departamento de Comunicación" 
-              style={styles.logoImg}
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
+            <img src={LOGO_DPTO_BASE64} alt="Logo Dpto" style={styles.logoImg} onError={(e) => { e.target.style.display = 'none'; }} />
           </div>
         </div>
       </header>
@@ -156,13 +174,22 @@ export default function App() {
       {/* CONTENIDO PRINCIPAL */}
       <main style={styles.main}>
         
-        {/* REPOSITORIO DE ENLACES DE TRABAJO RÁPIDO */}
+        {/* REPOSITORIO DE ENLACES DE TRABAJO RÁPIDO REFACTORIZADO */}
         <div style={styles.banner}>
-          <h2 style={styles.bannerTitle}>🔗 Accesos Directos de Oficina</h2>
-          <p style={styles.bannerText}>Herramientas del día a día abiertas en un clic para agilizar la labor diaria:</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+            <div>
+              <h2 style={styles.bannerTitle}>🔗 Accesos Directos de Oficina (Cuentas Carbó)</h2>
+              <p style={styles.bannerText}>Herramientas institucionales configuradas para evitar cruces con cuentas personales:</p>
+            </div>
+            {/* BOTÓN MAGICO DE INFORME */}
+            <button onClick={generarInformeSemanal} style={styles.buttonReport}>
+              📋 Generar Informe Semanal
+            </button>
+          </div>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginTop: '15px' }}>
-            <a href="https://drive.google.com" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📂 Google Drive Carbó</a>
-            <a href="https://canva.com" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>🎨 Workspace Canva</a>
+            <a href="https://drive.google.com/drive/u/1/my-drive" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📂 Drive Comunicación Carbó</a>
+            <a href="https://www.canva.com/folder/all-designs" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>🎨 Canva Institucional</a>
+            <a href="https://business.facebook.com/" target="_blank" rel="noreferrer" style={styles.shortcutBtnMeta}>📊 Meta Business Suite</a>
             <a href="https://instagram.com/carbo.comunica" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📸 Instagram Oficial</a>
           </div>
         </div>
@@ -170,7 +197,6 @@ export default function App() {
         {/* MÓDULO 1: TABLONES DE REDACCIÓN Y COMUNICADOS */}
         <h2 style={styles.sectionHeader}>📢 Canales de Difusión y Novedades</h2>
         <div style={styles.grid3}>
-          {/* ACTIVIDADES */}
           <section style={styles.card}>
             <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📋 Actividades Recientes</h3></div>
             <div style={styles.cardBody}>
@@ -189,7 +215,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* AGENDA */}
           <section style={styles.card}>
             <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📅 Agenda Institucional</h3></div>
             <div style={styles.cardBody}>
@@ -208,7 +233,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* GACETILLAS */}
           <section style={styles.card}>
             <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📰 Gacetillas Emitidas</h3></div>
             <div style={styles.cardBody}>
@@ -332,7 +356,7 @@ export default function App() {
   );
 }
 
-// --- ESTILOS ASOCIADOS ---
+// --- ESTILOS COMPLETO ---
 const styles = {
   container: { fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', backgroundColor: '#f1f5f9', minHeight: '100vh', display: 'flex', flexDirection: 'column', color: '#334155', margin: 0 },
   header: { backgroundColor: '#1e3a8a', color: '#ffffff', padding: '15px 40px', borderBottom: '4px solid #f59e0b', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' },
@@ -348,6 +372,8 @@ const styles = {
   bannerTitle: { margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 'bold' },
   bannerText: { margin: '6px 0 0 0', fontSize: '14px', color: '#64748b' },
   shortcutBtn: { textDecoration: 'none', backgroundColor: '#f1f5f9', color: '#1e3a8a', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', border: '1px solid #cbd5e1', display: 'inline-block' },
+  shortcutBtnMeta: { textDecoration: 'none', backgroundColor: '#e0f2fe', color: '#0369a1', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', border: '1px solid #bae6fd', display: 'inline-block' },
+  buttonReport: { backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(16,185,129,0.2)' },
   sectionHeader: { fontSize: '18px', fontWeight: 'bold', color: '#1e3a8a', marginTop: '40px', marginBottom: '15px', borderLeft: '4px solid #f59e0b', paddingLeft: '10px' },
   grid3: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' },
   card: { backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '20px' },
