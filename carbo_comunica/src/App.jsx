@@ -1,57 +1,37 @@
 import React, { useState, useEffect } from 'react';
 
+// Credenciales
 const CLAVES_ACCESO = { "carbo2026mar": "Marina Carrizo", "carbo2026juan": "Juan Pérez" };
 const NIVELES = ["Nivel Inicial", "Nivel Primario", "Nivel Secundario", "Nivel Superior"];
 
 export default function App() {
   const [usuario, setUsuario] = useState(() => localStorage.getItem('carbo_usuario_sesion') || '');
   const [activeTab, setActiveTab] = useState('actividades');
-  
-  // Estados para datos
-  const [data, setData] = useState({
-    actividades: JSON.parse(localStorage.getItem('actividades')) || [],
-    agenda: JSON.parse(localStorage.getItem('agenda')) || [],
-    gacetillas: JSON.parse(localStorage.getItem('gacetillas')) || [],
-    coberturas: JSON.parse(localStorage.getItem('coberturas')) || [],
-    tareas: JSON.parse(localStorage.getItem('tareas')) || []
-  });
 
-  // Guardado automático
-  useEffect(() => {
-    Object.keys(data).forEach(key => localStorage.setItem(key, JSON.stringify(data[key])));
-  }, [data]);
+  // Recuperar estados complejos
+  const [actividades, setActividades] = useState(() => JSON.parse(localStorage.getItem('actividades')) || []);
+  const [agenda, setAgenda] = useState(() => JSON.parse(localStorage.getItem('agenda')) || []);
+  const [gacetillas, setGacetillas] = useState(() => JSON.parse(localStorage.getItem('gacetillas')) || []);
+  const [coberturas, setCoberturas] = useState(() => JSON.parse(localStorage.getItem('coberturas')) || []);
+  const [tareas, setTareas] = useState(() => JSON.parse(localStorage.getItem('tareas')) || []);
 
-  const addItem = (section, newItem) => {
-    setData(prev => ({ ...prev, [section]: [...prev[section], { ...newItem, id: Date.now() }] }));
-  };
+  // Guardado persistente
+  useEffect(() => { localStorage.setItem('actividades', JSON.stringify(actividades)); }, [actividades]);
+  useEffect(() => { localStorage.setItem('agenda', JSON.stringify(agenda)); }, [agenda]);
+  useEffect(() => { localStorage.setItem('gacetillas', JSON.stringify(gacetillas)); }, [gacetillas]);
+  useEffect(() => { localStorage.setItem('coberturas', JSON.stringify(coberturas)); }, [coberturas]);
+  useEffect(() => { localStorage.setItem('tareas', JSON.stringify(tareas)); }, [tareas]);
 
-  const removeItem = (section, id) => {
-    setData(prev => ({ ...prev, [section]: prev[section].filter(item => item.id !== id) }));
-  };
+  const handleLogout = () => { setUsuario(''); localStorage.removeItem('carbo_usuario_sesion'); };
 
   if (!usuario) {
     return (
       <div style={{ padding: '50px', textAlign: 'center', backgroundColor: '#f1f5f9', minHeight: '100vh' }}>
         <h2>Acceso Carbó</h2>
-        <input type="password" onBlur={(e) => { if(CLAVES_ACCESO[e.target.value]) { setUsuario(CLAVES_ACCESO[e.target.value]); localStorage.setItem('carbo_usuario_sesion', CLAVES_ACCESO[e.target.value]); } }} placeholder="Ingrese clave" style={{ padding: '10px', width: '250px' }} />
+        <input type="password" onChange={(e) => { if(CLAVES_ACCESO[e.target.value]) { setUsuario(CLAVES_ACCESO[e.target.value]); localStorage.setItem('carbo_usuario_sesion', CLAVES_ACCESO[e.target.value]); } }} placeholder="Ingrese clave" style={{ padding: '10px', width: '250px' }} />
       </div>
     );
   }
-
-  // Renderizado de secciones
-  const renderSection = () => {
-    switch(activeTab) {
-      case 'actividades':
-      case 'agenda':
-      case 'gacetillas':
-        return <GenericList section={activeTab} items={data[activeTab]} addItem={addItem} removeItem={removeItem} />;
-      case 'coberturas':
-        return <CoberturasList items={data.coberturas} addItem={addItem} removeItem={removeItem} />;
-      case 'tareas':
-        return <TareasList items={data.tareas} addItem={addItem} removeItem={removeItem} />;
-      default: return null;
-    }
-  };
 
   return (
     <div style={styles.container}>
@@ -64,7 +44,7 @@ export default function App() {
               <p style={styles.subtitle}>Operador/a: <strong>{usuario}</strong></p>
             </div>
           </div>
-          <button onClick={() => { setUsuario(''); localStorage.removeItem('carbo_usuario_sesion'); }} style={styles.buttonLogout}>Salir ✕</button>
+          <button onClick={handleLogout} style={styles.buttonLogout}>Salir ✕</button>
           <img src="/comunicacion.png" alt="Logo Comunicación" style={styles.logoImg} />
         </div>
       </header>
@@ -78,44 +58,57 @@ export default function App() {
       </nav>
 
       <main style={styles.main}>
-        {renderSection()}
+        {activeTab === 'actividades' && <FormularioSimple label="Actividad" data={actividades} setData={setActividades} />}
+        {activeTab === 'agenda' && <FormularioSimple label="Evento en Agenda" data={agenda} setData={setAgenda} />}
+        {activeTab === 'gacetillas' && <FormularioSimple label="Gacetilla" data={gacetillas} setData={setGacetillas} />}
+        {activeTab === 'coberturas' && <FormularioCoberturas data={coberturas} setData={setCoberturas} />}
+        {activeTab === 'tareas' && <FormularioTareas data={tareas} setData={setTareas} />}
       </main>
     </div>
   );
 }
 
-// Componentes auxiliares de lista
-function GenericList({ section, items, addItem, removeItem }) {
+// Sub-componente para listas simples
+function FormularioSimple({ label, data, setData }) {
   const [text, setText] = useState('');
+  const [fecha, setFecha] = useState('');
   return (
     <div>
-      <input placeholder="Descripción..." value={text} onChange={(e) => setText(e.target.value)} style={{ padding: '8px', width: '300px' }} />
-      <button onClick={() => { addItem(section, { text }); setText(''); }} style={styles.btnAdd}>Agregar</button>
-      <ul style={{ marginTop: '20px' }}>
-        {items.map(i => <li key={i.id} style={styles.item}>{i.text} <button onClick={() => removeItem(section, i.id)}>🗑️</button></li>)}
-      </ul>
+      <h3>Gestión de {label}</h3>
+      <input type="date" onChange={(e) => setFecha(e.target.value)} value={fecha} />
+      <input placeholder="Descripción..." value={text} onChange={(e) => setText(e.target.value)} style={{ marginLeft: '10px' }} />
+      <button onClick={() => { setData([...data, { id: Date.now(), fecha, text }]); setText(''); }}>Agregar</button>
+      {data.map(item => <div key={item.id} style={styles.item}>{item.fecha} - {item.text} <button onClick={() => setData(data.filter(i => i.id !== item.id))}>🗑️</button></div>)}
     </div>
   );
 }
 
-function CoberturasList({ items, addItem, removeItem }) {
-  const [ev, setEv] = useState('');
+// Sub-componente complejo para Coberturas
+function FormularioCoberturas({ data, setData }) {
+  const [evento, setEvento] = useState('');
+  const [notas, setNotas] = useState('');
   return (
     <div>
-      <input placeholder="Evento..." value={ev} onChange={(e) => setEv(e.target.value)} style={{ padding: '8px', width: '200px' }} />
-      <button onClick={() => { addItem('coberturas', { text: ev }); setEv(''); }} style={styles.btnAdd}>Registrar</button>
-      {items.map(i => <div key={i.id} style={styles.item}>{i.text} <button onClick={() => removeItem('coberturas', i.id)}>🗑️</button></div>)}
+      <h3>Nueva Cobertura</h3>
+      <input placeholder="Evento" value={evento} onChange={(e) => setEvento(e.target.value)} />
+      <input placeholder="Notas" value={notas} onChange={(e) => setNotas(e.target.value)} style={{ marginLeft: '10px' }} />
+      <button onClick={() => { setData([...data, { id: Date.now(), evento, notas }]); setEvento(''); setNotas(''); }}>Registrar</button>
+      {data.map(i => <div key={i.id} style={styles.item}><strong>{i.evento}</strong>: {i.notas} <button onClick={() => setData(data.filter(x => x.id !== i.id))}>🗑️</button></div>)}
     </div>
   );
 }
 
-function TareasList({ items, addItem, removeItem }) {
-  const [t, setT] = useState('');
+// Sub-componente complejo para Tareas
+function FormularioTareas({ data, setData }) {
+  const [texto, setTexto] = useState('');
+  const [resp, setResp] = useState('');
   return (
     <div>
-      <input placeholder="Nueva Tarea..." value={t} onChange={(e) => setT(e.target.value)} style={{ padding: '8px', width: '200px' }} />
-      <button onClick={() => { addItem('tareas', { text: t }); setT(''); }} style={styles.btnAdd}>Asignar</button>
-      {items.map(i => <div key={i.id} style={styles.item}>{i.text} <button onClick={() => removeItem('tareas', i.id)}>🗑️</button></div>)}
+      <h3>Asignación de Tareas</h3>
+      <input placeholder="Tarea" value={texto} onChange={(e) => setTexto(e.target.value)} />
+      <input placeholder="Responsable" value={resp} onChange={(e) => setResp(e.target.value)} style={{ marginLeft: '10px' }} />
+      <button onClick={() => { setData([...data, { id: Date.now(), texto, resp }]); setTexto(''); setResp(''); }}>Asignar</button>
+      {data.map(i => <div key={i.id} style={styles.item}>{i.texto} (Responsable: {i.resp}) <button onClick={() => setData(data.filter(x => x.id !== i.id))}>🗑️</button></div>)}
     </div>
   );
 }
@@ -129,8 +122,7 @@ const styles = {
   tabBtn: { padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
   main: { maxWidth: '800px', margin: '20px auto', padding: '20px', backgroundColor: '#fff', borderRadius: '8px' },
   buttonLogout: { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' },
-  btnAdd: { padding: '8px 16px', marginLeft: '10px', cursor: 'pointer' },
-  item: { padding: '10px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between' },
+  item: { padding: '10px', borderBottom: '1px solid #eee' },
   title: { margin: 0 },
   subtitle: { margin: 0, fontSize: '14px' }
 };
