@@ -45,9 +45,13 @@ const initialCoberturas = [
 ];
 
 const initialTareas = [
-  { id: 1, texto: "Coordinar los resultados de Formación Situada", responsable: "Marina Carrizo", fechaLimite: "2026-06-24", fechaRealizada: "", columna: "pendiente" },
-  { id: 2, texto: "Diseñar señalética institucional para el ingreso de la escuela", responsable: "Juan Pérez", fechaLimite: "2026-06-25", fechaRealizada: "", columna: "progreso" }
+  { id: 1, texto: "Coordinar los resultados de Formación Situada", responsable: "Marina Carrizo", fechaSolicitud: "2026-02-15", fechaLimite: "2026-02-28", fechaRealizada: "28/02/2026", columna: "completado" },
+  { id: 2, texto: "Diseñar señalética institucional para el ingreso de la escuela", responsable: "Juan Pérez", fechaSolicitud: "2026-06-18", fechaLimite: "2026-06-25", fechaRealizada: "", columna: "progreso" }
 ];
+
+// CADENAS DE DATOS DE ALTA FIDELIDAD PARA LOS LOGOS OFICIALES REALES
+const ESCUDO_REAL_BASE64 = "https://i.ibb.co/6Z80W88/Logo-A-Carbo-Blanco.png";
+const LOGO_COMUN_BASE64 = "https://i.ibb.co/2ZzGph6/LOGO-COMUNICACI-N.png";
 
 export default function App() {
   // --- CONTROL DE LOGIN LOCAL ---
@@ -59,23 +63,23 @@ export default function App() {
 
   // --- ESTADOS CON PERSISTENCIA LOCAL ---
   const [actividades, setActividades] = useState(() => {
-    const local = localStorage.getItem('carbo_actividades_v5');
+    const local = localStorage.getItem('carbo_actividades_v7');
     return local ? JSON.parse(local) : initialActividades;
   });
   const [agenda, setAgenda] = useState(() => {
-    const local = localStorage.getItem('carbo_agenda_v5');
+    const local = localStorage.getItem('carbo_agenda_v7');
     return local ? JSON.parse(local) : initialAgenda;
   });
   const [gacetillas, setGacetillas] = useState(() => {
-    const local = localStorage.getItem('carbo_gacetillas_v5');
+    const local = localStorage.getItem('carbo_gacetillas_v7');
     return local ? JSON.parse(local) : initialGacetillas;
   });
   const [coberturas, setCoberturas] = useState(() => {
-    const local = localStorage.getItem('carbo_coberturas_v5');
+    const local = localStorage.getItem('carbo_coberturas_v7');
     return local ? JSON.parse(local) : initialCoberturas;
   });
   const [tareas, setTareas] = useState(() => {
-    const local = localStorage.getItem('carbo_tareas_v5');
+    const local = localStorage.getItem('carbo_tareas_v7');
     return local ? JSON.parse(local) : initialTareas;
   });
 
@@ -90,17 +94,20 @@ export default function App() {
   const [cobPersona2, setCobPersona2] = useState(PERSONAL_AUTORIZADO[1]); const [cobFuncion2, setCobFuncion2] = useState('');
   const [cobNotas, setCobNotas] = useState('');
 
-  // Control inputs Tareas
+  // Control inputs Tareas con las nuevas solicitudes de fecha de Maraina
   const [nuevaTareaTexto, setNuevaTareaTexto] = useState('');
   const [tareaResp, setTareaResp] = useState(PERSONAL_AUTORIZADO[0]);
+  const [tareaSolicitud, setTareaSolicitud] = useState('');
   const [tareaLimite, setTareaLimite] = useState('');
+  const [columnaInicial, setColumnaInicial] = useState('pendiente');
+  const [tareaFinalizacionManual, setTareaFinalizacionManual] = useState('');
 
   // --- EFECTOS DE SINCRONIZACIÓN ---
-  useEffect(() => { localStorage.setItem('carbo_actividades_v5', JSON.stringify(actividades)); }, [actividades]);
-  useEffect(() => { localStorage.setItem('carbo_agenda_v5', JSON.stringify(agenda)); }, [agenda]);
-  useEffect(() => { localStorage.setItem('carbo_gacetillas_v5', JSON.stringify(gacetillas)); }, [gacetillas]);
-  useEffect(() => { localStorage.setItem('carbo_coberturas_v5', JSON.stringify(coberturas)); }, [coberturas]);
-  useEffect(() => { localStorage.setItem('carbo_tareas_v5', JSON.stringify(tareas)); }, [tareas]);
+  useEffect(() => { localStorage.setItem('carbo_actividades_v7', JSON.stringify(actividades)); }, [actividades]);
+  useEffect(() => { localStorage.setItem('carbo_agenda_v7', JSON.stringify(agenda)); }, [agenda]);
+  useEffect(() => { localStorage.setItem('carbo_gacetillas_v7', JSON.stringify(gacetillas)); }, [gacetillas]);
+  useEffect(() => { localStorage.setItem('carbo_coberturas_v7', JSON.stringify(coberturas)); }, [coberturas]);
+  useEffect(() => { localStorage.setItem('carbo_tareas_v7', JSON.stringify(tareas)); }, [tareas]);
 
   // --- LOGICA DE LOGIN ---
   const handleLogin = (e) => {
@@ -138,8 +145,8 @@ export default function App() {
     e.preventDefault();
     if (!cobEvento.trim()) return;
     const personalArray = [];
-    if (cobPersona1) personalArray.push({ nombre: cobPersona1, funcion: cobFuncion1.trim() || 'Cobertura General' });
-    if (cobPersona2) personalArray.push({ nombre: cobPersona2, funcion: cobFuncion2.trim() || 'Cobertura General' });
+    if (cobPersona1) personalArray.push({ nombre: cobPersona1, function: cobFuncion1.trim() || 'Cobertura General' });
+    if (cobPersona2) personalArray.push({ nombre: cobPersona2, function: cobFuncion2.trim() || 'Cobertura General' });
 
     const nueva = { id: Date.now(), evento: cobEvento.trim(), personal: personalArray, notas: cobNotas.trim() };
     setCoberturas(prev => [nueva, ...prev]);
@@ -149,14 +156,40 @@ export default function App() {
   const handleAddTarea = (e) => {
     e.preventDefault();
     if (!nuevaTareaTexto.trim()) return;
-    const nueva = { id: Date.now(), texto: nuevaTareaTexto.trim(), responsable: tareaResp, fechaLimite: tareaLimite || 'Sin fecha', fechaRealizada: '', columna: 'pendiente' };
+    
+    const fechaFinFormateada = columnaInicial === 'completado' && tareaFinalizacionManual
+      ? new Date(tareaFinalizacionManual).toLocaleDateString('es-AR')
+      : (columnaInicial === 'completado' ? new Date().toLocaleDateString('es-AR') : '');
+
+    const nueva = { 
+      id: Date.now(), 
+      texto: nuevaTareaTexto.trim(), 
+      responsable: tareaResp, 
+      fechaSolicitud: tareaSolicitud || new Date().toISOString().split('T')[0], 
+      fechaLimite: tareaLimite || 'Sin fecha', 
+      fechaRealizada: fechaFinFormateada, 
+      columna: columnaInicial 
+    };
     setTareas(prev => [nueva, ...prev]);
-    setNuevaTareaTexto(''); setTareaLimite('');
+    setNuevaTareaTexto(''); setTareaSolicitud(''); setTareaLimite(''); setTareaFinalizacionManual(''); setColumnaInicial('pendiente');
   };
 
   const handleMoverTarea = (id, nuevaColumna) => {
     const hoy = new Date().toLocaleDateString('es-AR');
-    setTareas(prev => prev.map(t => t.id === id ? { ...t, columna: nuevaColumna, fechaRealizada: nuevaColumna === 'completado' ? hoy : '' } : t));
+    setTareas(prev => prev.map(t => {
+      if (t.id === id) {
+        let fechaFin = t.fechaRealizada;
+        if (nuevaColumna === 'completado' && !t.fechaRealizada) {
+          // Si pasa a completado y no tenía fecha, le preguntamos al operador o le asignamos hoy por defecto
+          const customFecha = prompt("Ingresá la fecha de finalización (DD/MM/AAAA) o dejá vacío para poner la fecha de hoy:", hoy);
+          fechaFin = customFecha.trim() || hoy;
+        } else if (nuevaColumna !== 'completado') {
+          fechaFin = '';
+        }
+        return { ...t, columna: nuevaColumna, fechaRealizada: fechaFin };
+      }
+      return t;
+    }));
   };
 
   const handleRemoveTarea = (id) => {
@@ -165,19 +198,19 @@ export default function App() {
 
   // --- GENERACIÓN DE INFORME SEMANAL ---
   const generarInformeSemanal = () => {
-    const tareasListas = tareas.filter(t => t.columna === 'completado').map(t => `• Tarea: ${t.texto}\n  [Ejecutó: ${t.responsable} | Finalizada el: ${t.fechaRealizada}]`).join('\n') || '• Sin tareas finalizadas.';
+    const tareasListas = tareas.filter(t => t.columna === 'completado').map(t => `• Tarea: ${t.texto}\n  [Responsable: ${t.responsable} | Solicitada: ${t.fechaSolicitud} | Límite: ${t.fechaLimite} | Finalizada: ${t.fechaRealizada}]`).join('\n') || '• Sin tareas finalizadas.';
     const gacetillasListas = gacetillas.map(g => `• [${g.nivel}] ${g.texto} (${g.fecha})`).join('\n') || '• No se emitieron gacetillas.';
     const coberturasListas = coberturas.map(c => {
-      const personalStr = c.personal.map(p => `${p.nombre} [${p.funcion}]`).join(', ');
+      const personalStr = c.personal.map(p => `${p.nombre} [${p.funcion || p.function}]`).join(', ');
       return `• Evento: ${c.evento}\n  [Roles: ${personalStr} ${c.notas ? `| Notas: ${c.notas}` : ''}]`;
     }).join('\n') || '• No se registraron coberturas.';
 
-    const textoInforme = `===========================================================
+    const textoInforme = `======================================================================
 📝 INFORME SEMANAL DE GESTIÓN INSTITUCIONAL
 DEPARTAMENTO DE COMUNICACIÓN - ENS DR. ALEJANDRO CARBÓ
-===========================================================
+======================================================================
 
-1. ACCIONES Y TAREAS INTERNAS FINALIZADAS:
+1. ACCIONES Y TAREAS INTERNAS FINALIZADAS DE LA SEMANA:
 ${tareasListas}
 
 2. GACETILLAS Y COMUNICADOS EMITIDOS:
@@ -186,10 +219,10 @@ ${gacetillasListas}
 3. COBERTURAS DE EVENTOS REALIZADAS:
 ${coberturasListas}
 
------------------------------------------------------------
+----------------------------------------------------------------------
 Generado automáticamente por el departamento de comunicación del Carbó.`;
 
-    const ventanaInforme = window.open('', '_blank', 'width=650,height=650');
+    const ventanaInforme = window.open('', '_blank', 'width=700,height=650');
     ventanaInforme.document.write(`
       <html>
         <head><title>Informe Semanal Carbó</title></head>
@@ -207,7 +240,7 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
     return (
       <div style={{ backgroundColor: '#1e3a8a', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
         <form onSubmit={handleLogin} style={{ backgroundColor: '#fff', padding: '40px', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-          <h2 style={{ color: '#1e3a8a', margin: '0 0 10px 0', fontSize: '24px', fontWeight: 'bold' }}>Carbó Comunica</h2>
+          <h2 style={{ color: '#1e3a8a', margin: '0 0 10px 0', fontSize: '24px', font: 'bold' }}>Carbó Comunica</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 25px 0' }}>Ingresá tu clave operativa del Departamento de Comunicación</p>
           <input 
             type="password" 
@@ -229,18 +262,11 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
   return (
     <div style={styles.container}>
       
-      {/* HEADER CON LOGOS VECTORIALES COMPLEJOS (DIBUJADOS POR CÓDIGO INFAILIBLE) */}
+      {/* HEADER INSTITUCIONAL CON LOGOS REALES ENCADENADOS */}
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            {/* ESCUDO OFICIAL CARBÓ SVG DETALLADO */}
-            <svg style={styles.logoSvg} viewBox="0 0 100 120">
-              <path d="M10 10 H90 V85 L50 115 L10 85 Z" fill="#4673a3" stroke="#0f172a" strokeWidth="3"/>
-              <rect x="44" y="30" width="12" height="55" fill="#fff" stroke="#0f172a" strokeWidth="2"/>
-              <path d="M44 30 L50 12 L56 30 Z" fill="#1e293b"/>
-              <text x="50" y="24" fill="#ffffff" fontSize="6.5" fontWeight="bold" textAnchor="middle" letterSpacing="0.2">EDUCAR EN LA VERDAD</text>
-              <text x="50" y="65" fill="#b91c1c" fontSize="19" fontWeight="bold" textAnchor="middle" fontFamily="Georgia, serif">Ensac</text>
-            </svg>
+            <img src={ESCUDO_REAL_BASE64} alt="Escudo Carbó Oficial" style={styles.logoImg} />
             <div>
               <h1 style={styles.title}>Carbó Comunica</h1>
               <p style={styles.subtitle}>Panel Técnico de Control • Operador/a actual: <strong>{usuarioLogueado}</strong></p>
@@ -252,14 +278,7 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
               📋 Generar Informe Semanal
             </button>
             <button onClick={handleLogout} style={styles.buttonLogout}>Salir ✕</button>
-            {/* LOGO DEPARTAMENTO DE COMUNICACIÓN SVG DETALLADO */}
-            <svg style={styles.logoSvg} viewBox="0 0 100 100">
-              <path d="M25 50 A 25 25 0 1 1 75 65 L 85 75 L 75 55" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round"/>
-              <rect x="45" y="40" width="10" height="35" fill="#fff" stroke="#1e3a8a" strokeWidth="2"/>
-              <path d="M45 40 L50 25 L55 40 Z" fill="#f59e0b"/>
-              <path d="M60 42 Q68 50 60 58 M65 36 Q77 50 65 64" fill="none" stroke="#93c5fd" strokeWidth="3.5" strokeLinecap="round"/>
-              <text x="50" y="94" fill="#ffffff" fontSize="7.5" fontWeight="bold" textAnchor="middle" letterSpacing="0.5">COMUNICACIÓN</text>
-            </svg>
+            <img src={LOGO_COMUN_BASE64} alt="Logo Comunicación Oficial" style={styles.logoImg} />
           </div>
         </div>
       </header>
@@ -279,10 +298,9 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
           </div>
         </div>
 
-        {/* MÓDULO 1: TABLONES CON FILTRO DE FECHA Y NIVEL */}
+        {/* MÓDULO 1: DIFFUSIÓN */}
         <h2 style={styles.sectionHeader}>📢 Canales de Difusión y Novedades</h2>
         <div style={styles.grid3}>
-          
           {/* ACTIVIDADES */}
           <section style={styles.card}>
             <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📋 Actividades Recientes</h3></div>
@@ -368,7 +386,7 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
           </section>
         </div>
 
-        {/* MÓDULO 2: COBERTURAS CON MENÚS CERRADOS */}
+        {/* MÓDULO 2: COBERTURAS */}
         <h2 style={styles.sectionHeader}>📹 Planificación y Cobertura de Eventos</h2>
         <div style={styles.card}>
           <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📍 Registro de Roles y Trabajos Específicos del Personal</h3></div>
@@ -407,7 +425,7 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
                     <p style={{ margin: '0 0 5px 0', fontSize: '12px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' }}>Trabajo Desarrollado:</p>
                     {c.personal.map((p, i) => (
                       <p key={i} style={{ margin: '4px 0', fontSize: '13px', color: '#334155' }}>
-                        👤 <strong>{p.nombre}:</strong> {p.funcion}
+                        👤 <strong>{p.nombre}:</strong> {p.funcion || p.function}
                       </p>
                     ))}
                   </div>
@@ -418,40 +436,59 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
           </div>
         </div>
 
-        {/* MÓDULO 3: PANEL KANBAN ARREGLADO CON EL BOTÓN REGISTRAR TAREA */}
+        {/* MÓDULO 3: KANBAN ADAPTABLE PARA PASADO Y FUTURO */}
         <h2 style={styles.sectionHeader}>🛠️ Organizador de Tareas del Equipo</h2>
         <div style={styles.card}>
           <div style={styles.cardHeader}><h3 style={styles.cardTitle}>🎯 Seguimiento Operativo de Prioridades del Equipo</h3></div>
           <div style={styles.cardBody}>
             
-            <form onSubmit={handleAddTarea} style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '25px', border: '1px solid #e2e8f0' }}>
-              <input type="text" placeholder="Asunto o descripción de la tarea..." value={nuevaTareaTexto} onChange={(e) => setNuevaTareaTexto(e.target.value)} style={{ ...styles.input, flex: '2 1 300px' }} required/>
+            <form onSubmit={handleAddTarea} style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '25px', border: '1px solid #e2e8f0', alignItems: 'center' }}>
+              <input type="text" placeholder="Asunto o descripción de la tarea..." value={nuevaTareaTexto} onChange={(e) => setNuevaTareaTexto(e.target.value)} style={{ ...styles.input, flex: '2 1 200px' }} required/>
               
               <select value={tareaResp} onChange={(e) => setTareaResp(e.target.value)} style={styles.select}>
                 {PERSONAL_AUTORIZADO.map((p, i) => <option key={i} value={p}>{p}</option>)}
               </select>
+
+              <select value={columnaInicial} onChange={(e) => setColumnaInicial(e.target.value)} style={styles.select}>
+                <option value="pendiente">Cargar como: Pendiente</option>
+                <option value="progreso">Cargar como: En Proceso</option>
+                <option value="completado">Cargar como: Ya Finalizada (Historial)</option>
+              </select>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', color: '#475569' }}>Límite:</span>
-                <input type="date" value={tareaLimite} onChange={(e) => setTareaLimite(e.target.value)} style={styles.input}/>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '12px', color: '#475569', fontWeight: '500' }}>Solicitado:</span>
+                <input type="date" value={tareaSolicitud} onChange={(e) => setTareaSolicitud(e.target.value)} style={styles.input} required/>
               </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '12px', color: '#475569', fontWeight: '500' }}>Límite:</span>
+                <input type="date" value={tareaLimite} onChange={(e) => setTareaLimite(e.target.value)} style={styles.input} required/>
+              </div>
+
+              {columnaInicial === 'completado' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', padding: '6px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                  <span style={{ fontSize: '12px', color: '#166534', fontWeight: 'bold' }}>Se terminó el:</span>
+                  <input type="date" value={tareaFinalizacionManual} onChange={(e) => setTareaFinalizacionManual(e.target.value)} style={styles.input} required/>
+                </div>
+              )}
               
               <button type="submit" style={styles.buttonAdd}>Registrar Tarea</button>
             </form>
 
             <div style={styles.kanbanGrid}>
               
-              {/* COLUMNA PENDIENTE (BOTÓN ELIMINAR CORREGIDO) */}
+              {/* COLUMNA PENDIENTE */}
               <div style={styles.kanbanColumn}>
                 <h4 style={{ ...styles.kanbanColTitle, borderBottom: '3px solid #ef4444' }}>📌 Pendientes</h4>
                 {tareas.filter(t => t.columna === 'pendiente').map(t => (
                   <div key={t.id} style={styles.kanbanItem}>
                     <p style={styles.kanbanTaskText}>{t.texto}</p>
                     <p style={styles.kanbanMeta}>👤 Responsable: <strong>{t.responsable}</strong></p>
+                    <p style={styles.kanbanMeta}>📅 Solicitado: <span style={{ color: '#475569' }}>{t.fechaSolicitud}</span></p>
                     <p style={styles.kanbanMeta}>📅 Límite: <span style={{ color: '#ef4444', fontWeight: 'bold' }}>{t.fechaLimite}</span></p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', alignItems: 'center' }}>
                       <button type="button" onClick={() => handleMoverTarea(t.id, 'progreso')} style={styles.actionTaskBtn}>Iniciar Tarea ➡️</button>
-                      <button type="button" onClick={() => handleRemoveTarea(t.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>Eliminar</button>
+                      <button type="button" onClick={() => handleRemoveTarea(t.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', padding: 0 }}>Eliminar</button>
                     </div>
                   </div>
                 ))}
@@ -464,6 +501,7 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
                   <div key={t.id} style={styles.kanbanItem}>
                     <p style={styles.kanbanTaskText}>{t.texto}</p>
                     <p style={styles.kanbanMeta}>👤 Responsable: <strong>{t.responsable}</strong></p>
+                    <p style={styles.kanbanMeta}>📅 Solicitado: <span style={{ color: '#475569' }}>{t.fechaSolicitud}</span></p>
                     <p style={styles.kanbanMeta}>📅 Límite: <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{t.fechaLimite}</span></p>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
                       <button type="button" onClick={() => handleMoverTarea(t.id, 'pendiente')} style={styles.actionTaskBtn}>⬅️ Devolver</button>
@@ -480,6 +518,7 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
                   <div key={t.id} style={{ ...styles.kanbanItem, backgroundColor: '#f0fdf4' }}>
                     <p style={{ ...styles.kanbanTaskText, textDecoration: 'line-through', color: '#166534' }}>{t.texto}</p>
                     <p style={styles.kanbanMeta}>👤 Hizo: <strong>{t.responsable}</strong></p>
+                    <p style={styles.kanbanMeta}>📅 Solicitado: <span style={{ color: '#475569' }}>{t.fechaSolicitud}</span></p>
                     <p style={styles.kanbanMeta}>📅 Finalizada el: <span style={{ color: '#10b981', fontWeight: 'bold' }}>{t.fechaRealizada}</span></p>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
                       <button type="button" onClick={() => handleMoverTarea(t.id, 'progreso')} style={styles.actionTaskBtn}>🔄 Reabrir</button>
@@ -519,7 +558,7 @@ const styles = {
   headerContent: { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' },
   title: { margin: 0, fontSize: '24px', fontWeight: 'bold', letterSpacing: '-0.5px' },
   subtitle: { margin: '3px 0 0 0', fontSize: '12px', color: '#93c5fd' },
-  logoSvg: { height: '60px', width: '60px' },
+  logoImg: { height: '55px', width: 'auto', objectFit: 'contain' },
   badge: { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#1e1b4b', padding: '6px 14px', borderRadius: '20px', border: '1px solid #3730a3' },
   badgeDot: { width: '8px', height: '8px', backgroundColor: '#34d399', borderRadius: '50%' },
   badgeText: { fontSize: '10px', color: '#34d399', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' },
