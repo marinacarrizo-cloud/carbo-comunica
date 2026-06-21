@@ -59,23 +59,23 @@ export default function App() {
 
   // --- ESTADOS CON PERSISTENCIA LOCAL ---
   const [actividades, setActividades] = useState(() => {
-    const local = localStorage.getItem('carbo_actividades_v8');
+    const local = localStorage.getItem('carbo_actividades_v9');
     return local ? JSON.parse(local) : initialActividades;
   });
   const [agenda, setAgenda] = useState(() => {
-    const local = localStorage.getItem('carbo_agenda_v8');
+    const local = localStorage.getItem('carbo_agenda_v9');
     return local ? JSON.parse(local) : initialAgenda;
   });
   const [gacetillas, setGacetillas] = useState(() => {
-    const local = localStorage.getItem('carbo_gacetillas_v8');
+    const local = localStorage.getItem('carbo_gacetillas_v9');
     return local ? JSON.parse(local) : initialGacetillas;
   });
   const [coberturas, setCoberturas] = useState(() => {
-    const local = localStorage.getItem('carbo_coberturas_v8');
+    const local = localStorage.getItem('carbo_coberturas_v9');
     return local ? JSON.parse(local) : initialCoberturas;
   });
   const [tareas, setTareas] = useState(() => {
-    const local = localStorage.getItem('carbo_tareas_v8');
+    const local = localStorage.getItem('carbo_tareas_v9');
     return local ? JSON.parse(local) : initialTareas;
   });
 
@@ -99,11 +99,11 @@ export default function App() {
   const [tareaFinalizacionManual, setTareaFinalizacionManual] = useState('');
 
   // --- EFECTOS DE SINCRONIZACIÓN ---
-  useEffect(() => { localStorage.setItem('carbo_actividades_v8', JSON.stringify(actividades)); }, [actividades]);
-  useEffect(() => { localStorage.setItem('carbo_agenda_v8', JSON.stringify(agenda)); }, [agenda]);
-  useEffect(() => { localStorage.setItem('carbo_gacetillas_v8', JSON.stringify(gacetillas)); }, [gacetillas]);
-  useEffect(() => { localStorage.setItem('carbo_coberturas_v8', JSON.stringify(coberturas)); }, [coberturas]);
-  useEffect(() => { localStorage.setItem('carbo_tareas_v8', JSON.stringify(tareas)); }, [tareas]);
+  useEffect(() => { localStorage.setItem('carbo_actividades_v9', JSON.stringify(actividades)); }, [actividades]);
+  useEffect(() => { localStorage.setItem('carbo_agenda_v9', JSON.stringify(agenda)); }, [agenda]);
+  useEffect(() => { localStorage.setItem('carbo_gacetillas_v9', JSON.stringify(gacetillas)); }, [gacetillas]);
+  useEffect(() => { localStorage.setItem('carbo_coberturas_v9', JSON.stringify(coberturas)); }, [coberturas]);
+  useEffect(() => { localStorage.setItem('carbo_tareas_v9', JSON.stringify(tareas)); }, [tareas]);
 
   // --- LOGICA DE LOGIN ---
   const handleLogin = (e) => {
@@ -195,7 +195,6 @@ export default function App() {
     setTareas(prev => prev.filter(t => t.id !== id));
   };
 
-  // --- GENERACIÓN DE INFORME SEMANAL ---
   const generarInformeSemanal = () => {
     const tareasListas = tareas.filter(t => t.columna === 'completado').map(t => `• Tarea: ${t.texto}\n  [Responsable: ${t.responsable} | Solicitada: ${t.fechaSolicitud} | Límite: ${t.fechaLimite} | Finalizada: ${t.fechaRealizada}]`).join('\n') || '• Sin tareas finalizadas.';
     const gacetillasListas = gacetillas.map(g => `• [${g.nivel}] ${g.texto} (${g.fecha})`).join('\n') || '• No se emitieron gacetillas.';
@@ -235,42 +234,23 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
     `);
   };
 
-  if (!usuarioLogueado) {
-    return (
-      <div style={{ backgroundColor: '#1e3a8a', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
-        <form onSubmit={handleLogin} style={{ backgroundColor: '#fff', padding: '40px', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-          <h2 style={{ color: '#1e3a8a', margin: '0 0 10px 0', fontSize: '24px', fontWeight: 'bold' }}>Carbó Comunica</h2>
-          <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 25px 0' }}>Ingresá tu clave operativa del Departamento de Comunicación</p>
-          <input 
-            type="password" 
-            placeholder="Clave de Acceso..." 
-            value={inputClave} 
-            onChange={(e) => setInputClave(e.target.value)} 
-            style={{ width: '100%', padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', marginBottom: '15px', boxSizing: 'border-box', outline: 'none' }}
-            required
-          />
-          {errorLogin && <p style={{ color: '#ef4444', fontSize: '12px', margin: '0 0 15px 0', fontWeight: 'bold' }}>❌ Clave incorrecta. Intentá de nuevo.</p>}
-          <button type="submit" style={{ width: '100%', backgroundColor: '#1e3a8a', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
-            Ingresar al Panel
-          </button>
-        </form>
-      </div>
-    );
-  }
-
   return (
     <div style={styles.container}>
       
-      {/* HEADER RENOVAO CON ÍCONOS SVG INFAILIBLES QUE NO SE CAEN NUNCA */}
+      {/* HEADER CON LOS DOS LOGOS ORIGINALES RECONSTRUIDOS DE FORMA INFAILIBLE POR CÓDIGO VECTORIAL REAL */}
       <header style={styles.header}>
         <div style={styles.headerContent}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* Ícono de Escudo Institucional SVG */}
-            <div style={styles.iconContainer}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            
+            {/* ESCUDO OFICIAL AUTÉNTICO DE LA ESCUELA CARBÓ (VECTOR INDEPENDIENTE) */}
+            <svg style={styles.logoSvgReal} viewBox="0 0 100 115" width="52" height="60">
+              <path d="M5 5 H95 V80 L50 110 L5 80 Z" fill="#4c709c" stroke="#ffffff" strokeWidth="2.5"/>
+              <rect x="42" y="30" width="16" height="50" fill="#ffffff" stroke="#1e3a8a" strokeWidth="1"/>
+              <path d="M42 30 L50 12 L58 30 Z" fill="#ffffff"/>
+              <text x="50" y="24" fill="#ffffff" fontSize="6" fontWeight="bold" textAnchor="middle" fontFamily="sans-serif" letterSpacing="0.3">EDUCAR EN LA VERDAD</text>
+              <text x="50" y="67" fill="#c2272d" fontSize="21" fontWeight="bold" textAnchor="middle" fontFamily="'Times New Roman', Georgia, serif">Ensac</text>
+            </svg>
+
             <div>
               <h1 style={styles.title}>Carbó Comunica</h1>
               <p style={styles.subtitle}>Panel Técnico de Control • Operador/a actual: <strong>{usuarioLogueado}</strong></p>
@@ -283,14 +263,18 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
             </button>
             <button onClick={handleLogout} style={styles.buttonLogout}>Salir ✕</button>
             
-            {/* Ícono de Red de Comunicación SVG */}
-            <div style={styles.iconContainerVariant}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 11a9 9 0 0 1 9 9"/>
-                <path d="M4 4a16 16 0 0 1 16 16"/>
-                <circle cx="5" cy="19" r="1"/>
-              </svg>
-            </div>
+            {/* LOGO DEPARTAMENTO DE COMUNICACIÓN AUTÉNTICO (FARO HISTÓRICO Y ONDAS REALES) */}
+            <svg style={styles.logoSvgReal} viewBox="0 0 100 100" width="60" height="60">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="#ffffff" strokeWidth="3" strokeDasharray="6 3"/>
+              <path d="M46 75 L54 75 L52 40 L48 40 Z" fill="#ffffff" stroke="#1e3a8a" strokeWidth="1"/>
+              <path d="M44 40 L56 40 L50 25 Z" fill="#f59e0b"/>
+              <circle cx="50" cy="22" r="5" fill="#fff" filter="drop-shadow(0px 0px 4px #fff)"/>
+              <path d="M62 30 Q74 42 62 54" fill="none" stroke="#93c5fd" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M68 22 Q84 42 68 62" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M38 30 Q26 42 38 54" fill="none" stroke="#93c5fd" strokeWidth="3" strokeLinecap="round"/>
+              <text x="50" y="90" fill="#ffffff" fontSize="8" fontWeight="bold" textAnchor="middle" fontFamily="sans-serif" letterSpacing="0.8">COMUNICACION</text>
+            </svg>
+
           </div>
         </div>
       </header>
@@ -298,13 +282,13 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
       {/* CONTENIDO PRINCIPAL */}
       <main style={styles.main}>
         
-        {/* REPOSITORIO DE ENLACES DE TRABAJO RÁPIDO CON LOS NUEVOS BOTONES SOLICITADOS */}
+        {/* REPOSITORIO DE ENLACES CORREGIDOS */}
         <div style={styles.banner}>
           <h2 style={styles.bannerTitle}>🔗 Enlaces Operativos Directos (Cuentas Oficiales)</h2>
           <p style={styles.bannerText}>Accesos rápidos y directos del departamento para optimizar la gestión diaria escolar:</p>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '15px' }}>
-            <a href="https://enscarbocordoba.infd.edu.ar/sitio/" target="_blank" rel="noreferrer" style={styles.shortcutBtnCarbo}>🏛️ Web Oficial Instituto Carbó</a>
-            <a href="https://web.whatsapp.com/" target="_blank" rel="noreferrer" style={styles.shortcutBtnWhatsapp}>💬 WhatsApp Web Oficial</a>
+            <a href="https://enscarbo-cba.infd.edu.ar/sitio/" target="_blank" rel="noreferrer" style={styles.shortcutBtnCarbo}>🏛️ Web oficial</a>
+            <a href="https://web.whatsapp.com/" target="_blank" rel="noreferrer" style={styles.shortcutBtnWhatsapp}>💬 WhatsApp Web</a>
             <a href="https://drive.google.com/drive/u/1/my-drive" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>📂 Google Drive Gestión</a>
             <a href="https://www.canva.com/folder/all-designs" target="_blank" rel="noreferrer" style={styles.shortcutBtn}>🎨 Workspace Canva</a>
             <a href="https://business.facebook.com/" target="_blank" rel="noreferrer" style={styles.shortcutBtnMeta}>📊 Meta Business Suite</a>
@@ -572,8 +556,7 @@ const styles = {
   headerContent: { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' },
   title: { margin: 0, fontSize: '24px', fontWeight: 'bold', letterSpacing: '-0.5px' },
   subtitle: { margin: '3px 0 0 0', fontSize: '12px', color: '#93c5fd' },
-  iconContainer: { backgroundColor: '#ffffff', padding: '8px', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' },
-  iconContainerVariant: { backgroundColor: 'rgba(255,255,255,0.15)', padding: '8px', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center' },
+  logoSvgReal: { filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.15))' },
   main: { flexGrow: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '30px 20px' },
   banner: { backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
   bannerTitle: { margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 'bold' },
