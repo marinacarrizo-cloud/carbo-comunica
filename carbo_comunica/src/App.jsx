@@ -42,6 +42,9 @@ export default function App() {
   const [gacetillas, setGacetillas] = useState(() => { const local = localStorage.getItem('carbo_gacetillas_v12'); return local ? JSON.parse(local) : initialGacetillas; });
   const [coberturas, setCoberturas] = useState(() => { const local = localStorage.getItem('carbo_coberturas_v12'); return local ? JSON.parse(local) : initialCoberturas; });
   const [tareas, setTareas] = useState(() => { const local = localStorage.getItem('carbo_tareas_v12'); return local ? JSON.parse(local) : initialTareas; });
+  
+  // NUEVO: Estado para las tareas archivadas
+  const [tareasArchivadas, setTareasArchivadas] = useState(() => { const local = localStorage.getItem('carbo_tareas_archivadas_v12'); return local ? JSON.parse(local) : []; });
 
   const [textAct, setTextAct] = useState(''); const [dateAct, setDateAct] = useState(''); const [nivelAct, setNivelAct] = useState(NIVELES_CARBO[0]);
   const [textAge, setTextAge] = useState(''); const [dateAge, setDateAge] = useState(''); const [nivelAge, setNivelAge] = useState(NIVELES_CARBO[0]);
@@ -64,6 +67,9 @@ export default function App() {
   useEffect(() => { localStorage.setItem('carbo_gacetillas_v12', JSON.stringify(gacetillas)); }, [gacetillas]);
   useEffect(() => { localStorage.setItem('carbo_coberturas_v12', JSON.stringify(coberturas)); }, [coberturas]);
   useEffect(() => { localStorage.setItem('carbo_tareas_v12', JSON.stringify(tareas)); }, [tareas]);
+  
+  // NUEVO: Guardar en la memoria las archivadas
+  useEffect(() => { localStorage.setItem('carbo_tareas_archivadas_v12', JSON.stringify(tareasArchivadas)); }, [tareasArchivadas]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -77,8 +83,6 @@ export default function App() {
   const handleAddCanal = (e, text, date, nivel, setText, setDate, setNivel, setList) => {
     e.preventDefault();
     if (!text.trim()) return;
-    
-    // CORRECCIÓN: Separamos el string manualmente para evitar que UTC reste un día
     let fechaFormateada;
     if (date) {
       const [y, m, d] = date.split('-');
@@ -86,7 +90,6 @@ export default function App() {
     } else {
       fechaFormateada = new Date().toLocaleDateString('es-AR');
     }
-
     setList(prev => [{ fecha: fechaFormateada, nivel: nivel, texto: text.trim() }, ...prev]);
     setText(''); setDate(''); setNivel(NIVELES_CARBO[0]);
   };
@@ -108,8 +111,6 @@ export default function App() {
   const handleAddTarea = (e) => {
     e.preventDefault();
     if (!nuevaTareaTexto.trim()) return;
-    
-    // CORRECCIÓN: Aplicamos la misma lógica manual para la fecha de finalización si se ingresó una
     let fechaFinFormateada = '';
     if (columnaInicial === 'completado') {
       if (tareaFinalizacionManual) {
@@ -119,7 +120,6 @@ export default function App() {
         fechaFinFormateada = new Date().toLocaleDateString('es-AR');
       }
     }
-
     setTareas(prev => [{ id: Date.now(), texto: nuevaTareaTexto.trim(), responsable: tareaResp, fechaSolicitud: tareaSolicitud || new Date().toISOString().split('T')[0], fechaLimite: tareaLimite || 'Sin fecha', fechaRealizada: fechaFinFormateada, columna: columnaInicial }, ...prev]);
     setNuevaTareaTexto(''); setTareaSolicitud(''); setTareaLimite(''); setTareaFinalizacionManual(''); setColumnaInicial('pendiente');
   };
@@ -141,8 +141,21 @@ export default function App() {
 
   const handleRemoveTarea = (id) => setTareas(prev => prev.filter(t => t.id !== id));
 
+  // NUEVA FUNCIÓN: Mueve la tarea a las archivadas en lugar de borrarla
+  const handleArchivarTarea = (id) => {
+    const tareaAArchivar = tareas.find(t => t.id === id);
+    if (tareaAArchivar) {
+      setTareasArchivadas(prev => [tareaAArchivar, ...prev]);
+      setTareas(prev => prev.filter(t => t.id !== id));
+    }
+  };
+
   const generarInformeSemanal = () => {
     const tareasListas = tareas.filter(t => t.columna === 'completado').map(t => `• Tarea: ${t.texto}\n  [Responsable: ${t.responsable} | Solicitada: ${t.fechaSolicitud} | Límite: ${t.fechaLimite} | Finalizada: ${t.fechaRealizada}]`).join('\n') || '• Sin tareas finalizadas.';
+    
+    // NUEVO: Agregamos las tareas archivadas al informe
+    const tareasHistoricas = tareasArchivadas.map(t => `• [ARCHIVADA] ${t.texto}\n  [Responsable: ${t.responsable} | Finalizada: ${t.fechaRealizada}]`).join('\n') || '• No hay tareas en el archivo.';
+
     const gacetillasListas = gacetillas.map(g => `• [${g.nivel}] ${g.texto} (${g.fecha})`).join('\n') || '• No se emitieron gacetillas.';
     const coberturasListas = coberturas.map(c => {
       const personalStr = c.personal.map(p => `${p.nombre} [${p.funcion || p.function}]`).join(', ');
@@ -154,8 +167,11 @@ export default function App() {
 DEPARTAMENTO DE COMUNICACIÓN - ENS DR. ALEJANDRO CARBÓ
 ======================================================================
 
-1. ACCIONES Y TAREAS INTERNAS FINALIZADAS DE LA SEMANA:
+1. ACCIONES Y TAREAS INTERNAS DE LA SEMANA:
 ${tareasListas}
+
+1.b REGISTRO HISTÓRICO DE TAREAS ARCHIVADAS:
+${tareasHistoricas}
 
 2. GACETILLAS Y COMUNICADOS EMITIDOS:
 ${gacetillasListas}
@@ -189,7 +205,6 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            {/* CORRECCIÓN: Rutas de los logos ajustadas a la carpeta local */}
             <img src="/escudo.png" alt="Escudo Carbó Oficial" style={styles.logoImg} />
             <div>
               <h1 style={styles.title}>Carbó Comunica</h1>
@@ -321,7 +336,8 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
               </div>
               <div style={styles.kanbanColumn}>
                 <h4 style={{ ...styles.kanbanColTitle, borderBottom: '3px solid #10b981' }}>🎉 Finalizadas</h4>
-                {tareas.filter(t => t.columna === 'completado').map(t => (<div key={t.id} style={{ ...styles.kanbanItem, backgroundColor: '#f0fdf4' }}><p style={{ ...styles.kanbanTaskText, textDecoration: 'line-through', color: '#166534' }}>{t.texto}</p><p style={styles.kanbanMeta}>👤 <strong>{t.responsable}</strong></p><p style={styles.kanbanMeta}>📅 Solicitado: <span style={{ color: '#475569' }}>{t.fechaSolicitud}</span></p><p style={styles.kanbanMeta}>📅 Finalizada: <span style={{ color: '#10b981', fontWeight: 'bold' }}>{t.fechaRealizada}</span></p><div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}><button type="button" onClick={() => handleMoverTarea(t.id, 'progreso')} style={styles.actionTaskBtn}>🔄 Reabrir</button><button type="button" onClick={() => handleRemoveTarea(t.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '11px' }}>Archivar</button></div></div>))}
+                {/* ACÁ ESTÁ EL BOTÓN DE ARCHIVAR ACTUALIZADO */}
+                {tareas.filter(t => t.columna === 'completado').map(t => (<div key={t.id} style={{ ...styles.kanbanItem, backgroundColor: '#f0fdf4' }}><p style={{ ...styles.kanbanTaskText, textDecoration: 'line-through', color: '#166534' }}>{t.texto}</p><p style={styles.kanbanMeta}>👤 <strong>{t.responsable}</strong></p><p style={styles.kanbanMeta}>📅 Solicitado: <span style={{ color: '#475569' }}>{t.fechaSolicitud}</span></p><p style={styles.kanbanMeta}>📅 Finalizada: <span style={{ color: '#10b981', fontWeight: 'bold' }}>{t.fechaRealizada}</span></p><div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}><button type="button" onClick={() => handleMoverTarea(t.id, 'progreso')} style={styles.actionTaskBtn}>🔄 Reabrir</button><button type="button" onClick={() => handleArchivarTarea(t.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '11px' }}>Archivar</button></div></div>))}
               </div>
             </div>
           </div>
