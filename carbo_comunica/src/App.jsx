@@ -25,7 +25,7 @@ const initialGacetillas = [
   { fecha: "19/06/2026", nivel: "Institucional (todos los niveles)", texto: "Día de la Bandera." }
 ];
 const initialCoberturas = [
-  { id: 1, evento: "Acto Día de la Bandera", personal: [ { nombre: "Juan Pérez", funcion: "Registró fotos y videos" }, { nombre: "Marina Carrizo", funcion: "Maestra de ceremonias / Locutora" } ], notas: "Cobertura en vivo realizada." }
+  { id: 1, fecha: "20/06/2026", evento: "Acto Día de la Bandera", personal: [ { nombre: "Juan Pérez", funcion: "Registró fotos y videos" }, { nombre: "Marina Carrizo", funcion: "Maestra de ceremonias / Locutora" } ], notas: "Cobertura en vivo realizada." }
 ];
 const initialTareas = [
   { id: 1, texto: "Coordinar los resultados de Formación Situada", responsable: "Marina Carrizo", fechaSolicitud: "2026-02-15", fechaLimite: "2026-02-28", fechaRealizada: "28/02/2026", columna: "completado" },
@@ -42,14 +42,14 @@ export default function App() {
   const [gacetillas, setGacetillas] = useState(() => { const local = localStorage.getItem('carbo_gacetillas_v12'); return local ? JSON.parse(local) : initialGacetillas; });
   const [coberturas, setCoberturas] = useState(() => { const local = localStorage.getItem('carbo_coberturas_v12'); return local ? JSON.parse(local) : initialCoberturas; });
   const [tareas, setTareas] = useState(() => { const local = localStorage.getItem('carbo_tareas_v12'); return local ? JSON.parse(local) : initialTareas; });
-  
-  // NUEVO: Estado para las tareas archivadas
   const [tareasArchivadas, setTareasArchivadas] = useState(() => { const local = localStorage.getItem('carbo_tareas_archivadas_v12'); return local ? JSON.parse(local) : []; });
 
   const [textAct, setTextAct] = useState(''); const [dateAct, setDateAct] = useState(''); const [nivelAct, setNivelAct] = useState(NIVELES_CARBO[0]);
   const [textAge, setTextAge] = useState(''); const [dateAge, setDateAge] = useState(''); const [nivelAge, setNivelAge] = useState(NIVELES_CARBO[0]);
   const [textGac, setTextGac] = useState(''); const [dateGac, setDateGac] = useState(''); const [nivelGac, setNivelGac] = useState(NIVELES_CARBO[0]);
 
+  // Se reincorpora la fecha de cobertura
+  const [cobFecha, setCobFecha] = useState('');
   const [cobEvento, setCobEvento] = useState('');
   const [cobPersona1, setCobPersona1] = useState(PERSONAL_AUTORIZADO[0]); const [cobFuncion1, setCobFuncion1] = useState('');
   const [cobPersona2, setCobPersona2] = useState(PERSONAL_AUTORIZADO[1]); const [cobFuncion2, setCobFuncion2] = useState('');
@@ -62,13 +62,16 @@ export default function App() {
   const [columnaInicial, setColumnaInicial] = useState('pendiente');
   const [tareaFinalizacionManual, setTareaFinalizacionManual] = useState('');
 
+  // ESTADOS PARA EL MODAL DEL INFORME
+  const [showInformeModal, setShowInformeModal] = useState(false);
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
+
   useEffect(() => { localStorage.setItem('carbo_actividades_v12', JSON.stringify(actividades)); }, [actividades]);
   useEffect(() => { localStorage.setItem('carbo_agenda_v12', JSON.stringify(agenda)); }, [agenda]);
   useEffect(() => { localStorage.setItem('carbo_gacetillas_v12', JSON.stringify(gacetillas)); }, [gacetillas]);
   useEffect(() => { localStorage.setItem('carbo_coberturas_v12', JSON.stringify(coberturas)); }, [coberturas]);
   useEffect(() => { localStorage.setItem('carbo_tareas_v12', JSON.stringify(tareas)); }, [tareas]);
-  
-  // NUEVO: Guardar en la memoria las archivadas
   useEffect(() => { localStorage.setItem('carbo_tareas_archivadas_v12', JSON.stringify(tareasArchivadas)); }, [tareasArchivadas]);
 
   const handleLogin = (e) => {
@@ -102,8 +105,17 @@ export default function App() {
     const personalArray = [];
     if (cobPersona1) personalArray.push({ nombre: cobPersona1, funcion: cobFuncion1.trim() || 'Cobertura General' });
     if (cobPersona2) personalArray.push({ nombre: cobPersona2, funcion: cobFuncion2.trim() || 'Cobertura General' });
-    setCoberturas(prev => [{ id: Date.now(), evento: cobEvento.trim(), personal: personalArray, notas: cobNotas.trim() }, ...prev]);
-    setCobEvento(''); setCobFuncion1(''); setCobFuncion2(''); setCobNotas('');
+    
+    let fechaFormateada = '';
+    if (cobFecha) {
+      const [y, m, d] = cobFecha.split('-');
+      fechaFormateada = `${d}/${m}/${y}`;
+    } else {
+      fechaFormateada = new Date().toLocaleDateString('es-AR');
+    }
+
+    setCoberturas(prev => [{ id: Date.now(), fecha: fechaFormateada, evento: cobEvento.trim(), personal: personalArray, notas: cobNotas.trim() }, ...prev]);
+    setCobFecha(''); setCobEvento(''); setCobFuncion1(''); setCobFuncion2(''); setCobNotas('');
   };
 
   const handleRemoveCobertura = (id) => setCoberturas(prev => prev.filter(c => c.id !== id));
@@ -141,7 +153,6 @@ export default function App() {
 
   const handleRemoveTarea = (id) => setTareas(prev => prev.filter(t => t.id !== id));
 
-  // NUEVA FUNCIÓN: Mueve la tarea a las archivadas en lugar de borrarla
   const handleArchivarTarea = (id) => {
     const tareaAArchivar = tareas.find(t => t.id === id);
     if (tareaAArchivar) {
@@ -150,21 +161,57 @@ export default function App() {
     }
   };
 
-  const generarInformeSemanal = () => {
-    const tareasListas = tareas.filter(t => t.columna === 'completado').map(t => `• Tarea: ${t.texto}\n  [Responsable: ${t.responsable} | Solicitada: ${t.fechaSolicitud} | Límite: ${t.fechaLimite} | Finalizada: ${t.fechaRealizada}]`).join('\n') || '• Sin tareas finalizadas.';
-    
-    // NUEVO: Agregamos las tareas archivadas al informe
-    const tareasHistoricas = tareasArchivadas.map(t => `• [ARCHIVADA] ${t.texto}\n  [Responsable: ${t.responsable} | Finalizada: ${t.fechaRealizada}]`).join('\n') || '• No hay tareas en el archivo.';
+  // LÓGICA DE GENERACIÓN Y FILTRADO DEL INFORME
+  const parseDateAR = (dateStr) => {
+    if (!dateStr || !dateStr.includes('/')) return 0;
+    const [d, m, y] = dateStr.split('/');
+    return parseInt(`${y}${m.padStart(2, '0')}${d.padStart(2, '0')}`);
+  };
 
-    const gacetillasListas = gacetillas.map(g => `• [${g.nivel}] ${g.texto} (${g.fecha})`).join('\n') || '• No se emitieron gacetillas.';
-    const coberturasListas = coberturas.map(c => {
-      const personalStr = c.personal.map(p => `${p.nombre} [${p.funcion || p.function}]`).join(', ');
-      return `• Evento: ${c.evento}\n  [Roles: ${personalStr} ${c.notas ? `| Notas: ${c.notas}` : ''}]`;
-    }).join('\n') || '• No se registraron coberturas.';
+  const parseInputDate = (dateStr) => {
+    if (!dateStr) return null;
+    const [y, m, d] = dateStr.split('-');
+    return parseInt(`${y}${m}${d}`);
+  };
+
+  const generarInformeFiltrado = () => {
+    const min = parseInputDate(fechaDesde) || 0;
+    const max = parseInputDate(fechaHasta) || 99999999;
+
+    const estaEnRango = (fechaStr) => {
+      const val = parseDateAR(fechaStr);
+      return val >= min && val <= max;
+    };
+
+    const tareasListas = tareas
+      .filter(t => t.columna === 'completado' && estaEnRango(t.fechaRealizada))
+      .map(t => `• Tarea: ${t.texto}\n  [Responsable: ${t.responsable} | Solicitada: ${t.fechaSolicitud} | Límite: ${t.fechaLimite} | Finalizada: ${t.fechaRealizada}]`)
+      .join('\n') || '• Sin tareas finalizadas en este período.';
+    
+    const tareasHistoricas = tareasArchivadas
+      .filter(t => estaEnRango(t.fechaRealizada))
+      .map(t => `• [ARCHIVADA] ${t.texto}\n  [Responsable: ${t.responsable} | Finalizada: ${t.fechaRealizada}]`)
+      .join('\n') || '• No hay tareas archivadas en este período.';
+
+    const gacetillasListas = gacetillas
+      .filter(g => estaEnRango(g.fecha))
+      .map(g => `• [${g.nivel}] ${g.texto} (${g.fecha})`)
+      .join('\n') || '• No se emitieron gacetillas en este período.';
+
+    const coberturasListas = coberturas
+      .filter(c => estaEnRango(c.fecha))
+      .map(c => {
+        const personalStr = c.personal.map(p => `${p.nombre} [${p.funcion || p.function}]`).join(', ');
+        return `• Evento: ${c.evento} (${c.fecha})\n  [Roles: ${personalStr} ${c.notas ? `| Notas: ${c.notas}` : ''}]`;
+      }).join('\n') || '• No se registraron coberturas en este período.';
+
+    const peridoTexto = (fechaDesde || fechaHasta) 
+        ? `\nPERÍODO REPORTE: ${fechaDesde ? fechaDesde.split('-').reverse().join('/') : 'Inicio'} al ${fechaHasta ? fechaHasta.split('-').reverse().join('/') : 'Actualidad'}` 
+        : '';
 
     const textoInforme = `======================================================================
 📝 INFORME SEMANAL DE GESTIÓN INSTITUCIONAL
-DEPARTAMENTO DE COMUNICACIÓN - ENS DR. ALEJANDRO CARBÓ
+DEPARTAMENTO DE COMUNICACIÓN - ENS DR. ALEJANDRO CARBÓ${peridoTexto}
 ======================================================================
 
 1. ACCIONES Y TAREAS INTERNAS DE LA SEMANA:
@@ -182,8 +229,10 @@ ${coberturasListas}
 ----------------------------------------------------------------------
 Generado automáticamente por el departamento de comunicación del Carbó.`;
 
+    setShowInformeModal(false); // Cierra el popup
+
     const ventanaInforme = window.open('', '_blank', 'width=700,height=650');
-    ventanaInforme.document.write(`<html><head><title>Informe Semanal Carbó</title></head><body style="font-family:monospace; padding:25px; background:#f8fafc; color:#0f172a; line-height:1.5;"><h3 style="font-family:sans-serif; margin-top:0; color:#1e3a8a;">📋 Reporte Semanal Generado</h3><textarea style="width:100%; height:430px; padding:15px; font-family:monospace; font-size:12px; border:1px solid #cbd5e1; border-radius:8px; background:#fff;" readonly>${textoInforme}</textarea><br/><button onclick="window.close()" style="margin-top:15px; padding:10px 22px; font-family:sans-serif; background:#1e3a8a; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">Entendido, Cerrar</button></body></html>`);
+    ventanaInforme.document.write(`<html><head><title>Informe Semanal Carbó</title></head><body style="font-family:monospace; padding:25px; background:#f8fafc; color:#0f172a; line-height:1.5;"><h3 style="font-family:sans-serif; margin-top:0; color:#1e3a8a;">📋 Reporte Generado</h3><textarea style="width:100%; height:430px; padding:15px; font-family:monospace; font-size:12px; border:1px solid #cbd5e1; border-radius:8px; background:#fff;" readonly>${textoInforme}</textarea><br/><button onclick="window.close()" style="margin-top:15px; padding:10px 22px; font-family:sans-serif; background:#1e3a8a; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">Entendido, Cerrar</button></body></html>`);
   };
 
   if (!usuarioLogueado) {
@@ -202,6 +251,28 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
 
   return (
     <div style={styles.container}>
+      {/* MODAL PARA FILTRAR FECHAS */}
+      {showInformeModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '10px', width: '350px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontFamily: 'sans-serif' }}>
+            <h3 style={{ marginTop: 0, color: '#1e3a8a' }}>📅 Filtrar Informe</h3>
+            <p style={{ fontSize: '13px', color: '#64748b' }}>Seleccioná el rango de fechas. Si dejás vacío, se incluirá todo el historial.</p>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Desde fecha:</label>
+              <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} style={styles.input} />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Hasta fecha:</label>
+              <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} style={styles.input} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button onClick={() => setShowInformeModal(false)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', backgroundColor: '#fff', borderRadius: '6px', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={generarInformeFiltrado} style={{ padding: '8px 12px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Generar Reporte</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -212,7 +283,8 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <button onClick={generarInformeSemanal} style={styles.buttonReportHeader}>📋 Generar Informe</button>
+            {/* El botón ahora abre el modal en lugar de imprimir directo */}
+            <button onClick={() => setShowInformeModal(true)} style={styles.buttonReportHeader}>📋 Generar Informe</button>
             <button onClick={handleLogout} style={styles.buttonLogout}>Salir ✕</button>
             <img src="/comunicacion.png" alt="Logo Comunicación Oficial" style={styles.logoImg} />
           </div>
@@ -295,7 +367,13 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
           <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📍 Registro de Roles y Trabajos Específicos del Personal</h3></div>
           <div style={styles.cardBody}>
             <form onSubmit={handleAddCobertura} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '25px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}><input type="text" placeholder="Nombre del Evento (Ej: Acto del Día de la Bandera)" value={cobEvento} onChange={(e) => setCobEvento(e.target.value)} style={styles.input} required/><input type="text" placeholder="Notas e indicaciones generales" value={cobNotas} onChange={(e) => setCobNotas(e.target.value)} style={styles.input}/></div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                <input type="date" value={cobFecha} onChange={(e) => setCobFecha(e.target.value)} style={styles.input} required/>
+                <input type="text" placeholder="Nombre del Evento (Ej: Acto del Día de la Bandera)" value={cobEvento} onChange={(e) => setCobEvento(e.target.value)} style={{...styles.input, gridColumn: 'span 2'}} required/>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
+                <input type="text" placeholder="Notas e indicaciones generales" value={cobNotas} onChange={(e) => setCobNotas(e.target.value)} style={styles.input}/>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', borderTop: '1px dashed #cbd5e1', paddingTop: '10px' }}><select value={cobPersona1} onChange={(e) => setCobPersona1(e.target.value)} style={styles.select}>{PERSONAL_AUTORIZADO.map((p, i) => <option key={i} value={p}>{p}</option>)}</select><input type="text" placeholder="Trabajo realizado por Personal 1 (Ej: Saco fotos)" value={cobFuncion1} onChange={(e) => setCobFuncion1(e.target.value)} style={styles.input}/></div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}><select value={cobPersona2} onChange={(e) => setCobPersona2(e.target.value)} style={styles.select}>{PERSONAL_AUTORIZADO.map((p, i) => <option key={i} value={p}>{p}</option>)}</select><input type="text" placeholder="Trabajo realizado por Personal 2 (Ej: Maestra de ceremonias)" value={cobFuncion2} onChange={(e) => setCobFuncion2(e.target.value)} style={styles.input}/></div>
               <button type="submit" style={{ ...styles.buttonAdd, alignSelf: 'flex-end', padding: '10px 25px' }}>Registrar Cobertura</button>
@@ -303,7 +381,7 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
               {coberturas.map(c => (
                 <div key={c.id} style={{ padding: '20px', borderRadius: '8px', borderLeft: '5px solid #1e3a8a', backgroundColor: '#f8fafc', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}><h4 style={{ margin: 0, fontSize: '15px', color: '#1e3a8a', fontWeight: 'bold' }}>🎬 {c.evento}</h4><button onClick={() => handleRemoveCobertura(c.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '14px' }}>✕</button></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}><h4 style={{ margin: 0, fontSize: '15px', color: '#1e3a8a', fontWeight: 'bold' }}>🎬 {c.evento} <span style={{fontSize: '12px', color: '#64748b', fontWeight: 'normal'}}>({c.fecha})</span></h4><button onClick={() => handleRemoveCobertura(c.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '14px' }}>✕</button></div>
                   <div style={{ backgroundColor: '#ffffff', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '10px' }}><p style={{ margin: '0 0 5px 0', fontSize: '12px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' }}>Trabajo Desarrollado:</p>{c.personal.map((p, i) => (<p key={i} style={{ margin: '4px 0', fontSize: '13px', color: '#334155' }}>👤 <strong>{p.nombre}:</strong> {p.funcion || p.function}</p>))}</div>
                   {c.notas && <p style={{ margin: '0', fontSize: '12px', color: '#64748b' }}>📝 <em>Notas: {c.notas}</em></p>}
                 </div>
@@ -336,7 +414,6 @@ Generado automáticamente por el departamento de comunicación del Carbó.`;
               </div>
               <div style={styles.kanbanColumn}>
                 <h4 style={{ ...styles.kanbanColTitle, borderBottom: '3px solid #10b981' }}>🎉 Finalizadas</h4>
-                {/* ACÁ ESTÁ EL BOTÓN DE ARCHIVAR ACTUALIZADO */}
                 {tareas.filter(t => t.columna === 'completado').map(t => (<div key={t.id} style={{ ...styles.kanbanItem, backgroundColor: '#f0fdf4' }}><p style={{ ...styles.kanbanTaskText, textDecoration: 'line-through', color: '#166534' }}>{t.texto}</p><p style={styles.kanbanMeta}>👤 <strong>{t.responsable}</strong></p><p style={styles.kanbanMeta}>📅 Solicitado: <span style={{ color: '#475569' }}>{t.fechaSolicitud}</span></p><p style={styles.kanbanMeta}>📅 Finalizada: <span style={{ color: '#10b981', fontWeight: 'bold' }}>{t.fechaRealizada}</span></p><div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}><button type="button" onClick={() => handleMoverTarea(t.id, 'progreso')} style={styles.actionTaskBtn}>🔄 Reabrir</button><button type="button" onClick={() => handleArchivarTarea(t.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '11px' }}>Archivar</button></div></div>))}
               </div>
             </div>
