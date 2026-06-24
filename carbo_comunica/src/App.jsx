@@ -1,297 +1,500 @@
 import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 
-// Datos semilla reales de la Escuela Normal Superior Dr. Alejandro Carbó
-const initialActividades = [
-  "Organización Día de la Bandera.",
-  "Feria de Ciencias - 26/06.",
-  "Cobertura aniversario institucional."
-];
+// --- CONFIGURACIÓN DE FIREBASE ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDNOqkwwdwj3t7x9emN5sPY3kUOlGE96Cw",
+  authDomain: "carbo-comunica.firebaseapp.com",
+  projectId: "carbo-comunica",
+  storageBucket: "carbo-comunica.firebasestorage.app",
+  messagingSenderId: "376076420237",
+  appId: "1:376076420237:web:77a76879b4dc12a55e0ec4",
+  measurementId: "G-ZHFTTYKRRQ"
+};
 
-const initialAgenda = [
-  "20/06 - Acto Día de la Bandera.",
-  "26/06 - Feria de Ciencias.",
-  "Reunión con directivos."
-];
+// Inicializamos Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-const initialGacetillas = [
-  "Invitación Feria de Ciencias.",
-  "Día de la Bandera."
-];
+// Credenciales operativas locales
+const CLAVES_ACCESO = {
+  "carbo2026mar": "Marina Carrizo",
+  "carbo2026juan": "Juan Pérez",
+  "carbo2026dir": "Prof. Lic. Marcela Rosana Quevedo (Directora de la Unidad Académica)"
+};
+
+const NIVELES_CARBO = ["Institucional (todos los niveles)", "Nivel Inicial", "Nivel Primario", "Nivel Secundario", "Nivel Superior"];
+const PERSONAL_AUTORIZADO = ["Marina Carrizo", "Juan Pérez", "Equipo General"];
 
 export default function App() {
-  // --- ESTADOS CON INICIALIZACIÓN PEREZOSA (Evita lecturas redundantes de localStorage) ---
-  const [actividades, setActividades] = useState(() => {
-    const local = localStorage.getItem('carbo_actividades');
-    return local ? JSON.parse(local) : initialActividades;
-  });
+  const [usuarioLogueado, setUsuarioLogueado] = useState(() => localStorage.getItem('carbo_usuario_sesion') || '');
+  const [inputClave, setInputClave] = useState('');
+  const [errorLogin, setErrorLogin] = useState(false);
 
-  const [agenda, setAgenda] = useState(() => {
-    const local = localStorage.getItem('carbo_agenda');
-    return local ? JSON.parse(local) : initialAgenda;
-  });
+  // Estados ahora sincronizados con la nube
+  const [actividades, setActividades] = useState([]);
+  const [agenda, setAgenda] = useState([]);
+  const [gacetillas, setGacetillas] = useState([]);
+  const [coberturas, setCoberturas] = useState([]);
+  const [tareas, setTareas] = useState([]);
+  const [tareasArchivadas, setTareasArchivadas] = useState([]);
 
-  const [gacetillas, setGacetillas] = useState(() => {
-    const local = localStorage.getItem('carbo_gacetillas');
-    return local ? JSON.parse(local) : initialGacetillas;
-  });
+  // Inputs
+  const [textAct, setTextAct] = useState(''); const [dateAct, setDateAct] = useState(''); const [nivelAct, setNivelAct] = useState(NIVELES_CARBO[0]);
+  const [textAge, setTextAge] = useState(''); const [dateAge, setDateAge] = useState(''); const [nivelAge, setNivelAge] = useState(NIVELES_CARBO[0]);
+  const [textGac, setTextGac] = useState(''); const [dateGac, setDateGac] = useState(''); const [nivelGac, setNivelGac] = useState(NIVELES_CARBO[0]);
 
-  // Estados independientes para el manejo de los formularios de entrada
-  const [inputActividad, setInputActividad] = useState('');
-  const [inputAgenda, setInputAgenda] = useState('');
-  const [inputGacetilla, setInputGacetilla] = useState('');
+  const [cobFecha, setCobFecha] = useState('');
+  const [cobEvento, setCobEvento] = useState('');
+  const [cobPersona1, setCobPersona1] = useState(PERSONAL_AUTORIZADO[0]); const [cobFuncion1, setCobFuncion1] = useState('');
+  const [cobPersona2, setCobPersona2] = useState(PERSONAL_AUTORIZADO[1]); const [cobFuncion2, setCobFuncion2] = useState('');
+  const [cobNotas, setCobNotas] = useState('');
 
-  // --- EFECTOS DE SINCRONIZACIÓN CON LOCALSTORAGE ---
+  const [nuevaTareaTexto, setNuevaTareaTexto] = useState('');
+  const [tareaResp, setTareaResp] = useState(PERSONAL_AUTORIZADO[0]);
+  const [tareaSolicitud, setTareaSolicitud] = useState('');
+  const [tareaLimite, setTareaLimite] = useState('');
+  const [columnaInicial, setColumnaInicial] = useState('pendiente');
+  const [tareaFinalizacionManual, setTareaFinalizacionManual] = useState('');
+
+  const [showInformeModal, setShowInformeModal] = useState(false);
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
+
+  // --- SINCRONIZACIÓN EN TIEMPO REAL CON FIREBASE ---
   useEffect(() => {
-    localStorage.setItem('carbo_actividades', JSON.stringify(actividades));
-  }, [actividades]);
+    if (!usuarioLogueado) return;
 
-  useEffect(() => {
-    localStorage.setItem('carbo_agenda', JSON.stringify(agenda));
-  }, [agenda]);
+    const colecciones = [
+      { name: 'actividades', set: setActividades },
+      { name: 'agenda', set: setAgenda },
+      { name: 'gacetillas', set: setGacetillas },
+      { name: 'coberturas', set: setCoberturas },
+      { name: 'tareas', set: setTareas },
+      { name: 'tareasArchivadas', set: setTareasArchivadas }
+    ];
 
-  useEffect(() => {
-    localStorage.setItem('carbo_gacetillas', JSON.stringify(gacetillas));
-  }, [gacetillas]);
+    const desuscribir = colecciones.map(col => {
+      const q = query(collection(db, col.name), orderBy('createdAt', 'desc'));
+      return onSnapshot(q, (snapshot) => {
+        col.set(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+      });
+    });
 
-  // --- MANEJADORES DE LOGICA (AGREGAR / ELIMINAR) ---
-  const handleAdd = (e, target, input, setInput, setList) => {
+    return () => desuscribir.forEach(unsub => unsub());
+  }, [usuarioLogueado]);
+
+  const handleLogin = (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
-    setList(prev => [...prev, input.trim()]);
-    setInput('');
+    const nombreUsuario = CLAVES_ACCESO[inputClave.trim()];
+    if (nombreUsuario) { setUsuarioLogueado(nombreUsuario); localStorage.setItem('carbo_usuario_sesion', nombreUsuario); setErrorLogin(false); } 
+    else { setErrorLogin(true); }
   };
 
-  const handleRemove = (index, setList) => {
-    setList(prev => prev.filter((_, i) => i !== index));
+  const handleLogout = () => { setUsuarioLogueado(''); localStorage.removeItem('carbo_usuario_sesion'); };
+
+  // --- FUNCIONES DE GUARDADO EN LA NUBE ---
+  const handleAddToCloud = async (e, text, date, nivel, setText, setDate, setNivel, collectionName) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    
+    let fechaFormateada = date ? `${date.split('-')[2]}/${date.split('-')[1]}/${date.split('-')[0]}` : new Date().toLocaleDateString('es-AR');
+    
+    await addDoc(collection(db, collectionName), { 
+      fecha: fechaFormateada, 
+      nivel: nivel, 
+      texto: text.trim(), 
+      createdAt: Date.now() 
+    });
+    
+    setText(''); setDate(''); setNivel(NIVELES_CARBO[0]);
   };
+
+  const handleRemoveFromCloud = async (id, collectionName) => {
+    await deleteDoc(doc(db, collectionName, id));
+  };
+
+  const handleAddCobertura = async (e) => {
+    e.preventDefault();
+    if (!cobEvento.trim()) return;
+    const personalArray = [];
+    if (cobPersona1) personalArray.push({ nombre: cobPersona1, funcion: cobFuncion1.trim() || 'Cobertura General' });
+    if (cobPersona2) personalArray.push({ nombre: cobPersona2, funcion: cobFuncion2.trim() || 'Cobertura General' });
+    
+    let fechaFormateada = cobFecha ? `${cobFecha.split('-')[2]}/${cobFecha.split('-')[1]}/${cobFecha.split('-')[0]}` : new Date().toLocaleDateString('es-AR');
+
+    await addDoc(collection(db, 'coberturas'), { 
+      fecha: fechaFormateada, 
+      evento: cobEvento.trim(), 
+      personal: personalArray, 
+      notas: cobNotas.trim(),
+      createdAt: Date.now()
+    });
+    
+    setCobFecha(''); setCobEvento(''); setCobFuncion1(''); setCobFuncion2(''); setCobNotas('');
+  };
+
+  const handleAddTarea = async (e) => {
+    e.preventDefault();
+    if (!nuevaTareaTexto.trim()) return;
+    let fechaFinFormateada = '';
+    
+    if (columnaInicial === 'completado') {
+      fechaFinFormateada = tareaFinalizacionManual ? `${tareaFinalizacionManual.split('-')[2]}/${tareaFinalizacionManual.split('-')[1]}/${tareaFinalizacionManual.split('-')[0]}` : new Date().toLocaleDateString('es-AR');
+    }
+
+    await addDoc(collection(db, 'tareas'), { 
+      texto: nuevaTareaTexto.trim(), 
+      responsable: tareaResp, 
+      fechaSolicitud: tareaSolicitud || new Date().toISOString().split('T')[0], 
+      fechaLimite: tareaLimite || 'Sin fecha', 
+      fechaRealizada: fechaFinFormateada, 
+      columna: columnaInicial,
+      createdAt: Date.now()
+    });
+    
+    setNuevaTareaTexto(''); setTareaSolicitud(''); setTareaLimite(''); setTareaFinalizacionManual(''); setColumnaInicial('pendiente');
+  };
+
+  const handleMoverTarea = async (id, nuevaColumna, actualFechaRealizada) => {
+    const hoy = new Date().toLocaleDateString('es-AR');
+    let fechaFin = actualFechaRealizada;
+    
+    if (nuevaColumna === 'completado' && !actualFechaRealizada) {
+      const customFecha = prompt("Ingresá la fecha de finalización (DD/MM/AAAA) o dejá vacío para hoy:", hoy);
+      fechaFin = customFecha ? (customFecha.trim() || hoy) : hoy;
+    } else if (nuevaColumna !== 'completado') { 
+      fechaFin = ''; 
+    }
+    
+    await updateDoc(doc(db, 'tareas', id), { columna: nuevaColumna, fechaRealizada: fechaFin });
+  };
+
+  const handleArchivarTarea = async (id) => {
+    const tareaAArchivar = tareas.find(t => t.id === id);
+    if (tareaAArchivar) {
+      await addDoc(collection(db, 'tareasArchivadas'), { ...tareaAArchivar, createdAt: Date.now() });
+      await deleteDoc(doc(db, 'tareas', id));
+    }
+  };
+
+  // --- LÓGICA DE REPORTES ---
+  const parseDateAR = (dateStr) => {
+    if (!dateStr || !dateStr.includes('/')) return 0;
+    const [d, m, y] = dateStr.split('/');
+    return parseInt(`${y}${m.padStart(2, '0')}${d.padStart(2, '0')}`);
+  };
+
+  const parseInputDate = (dateStr) => {
+    if (!dateStr) return null;
+    const [y, m, d] = dateStr.split('-');
+    return parseInt(`${y}${m}${d}`);
+  };
+
+  const generarInformeFiltrado = () => {
+    const min = parseInputDate(fechaDesde) || 0;
+    const max = parseInputDate(fechaHasta) || 99999999;
+
+    const estaEnRango = (fechaStr) => {
+      const val = parseDateAR(fechaStr);
+      return val >= min && val <= max;
+    };
+
+    const tareasListas = tareas
+      .filter(t => t.columna === 'completado' && estaEnRango(t.fechaRealizada))
+      .map(t => `• Tarea: ${t.texto}\n  [Responsable: ${t.responsable} | Solicitada: ${t.fechaSolicitud} | Límite: ${t.fechaLimite} | Finalizada: ${t.fechaRealizada}]`)
+      .join('\n') || '• Sin tareas finalizadas en este período.';
+    
+    const tareasHistoricas = tareasArchivadas
+      .filter(t => estaEnRango(t.fechaRealizada))
+      .map(t => `• [ARCHIVADA] ${t.texto}\n  [Responsable: ${t.responsable} | Finalizada: ${t.fechaRealizada}]`)
+      .join('\n') || '• No hay tareas archivadas en este período.';
+
+    const gacetillasListas = gacetillas
+      .filter(g => estaEnRango(g.fecha))
+      .map(g => `• [${g.nivel}] ${g.texto} (${g.fecha})`)
+      .join('\n') || '• No se emitieron gacetillas en este período.';
+
+    const coberturasListas = coberturas
+      .filter(c => estaEnRango(c.fecha))
+      .map(c => {
+        const personalStr = c.personal ? c.personal.map(p => `${p.nombre} [${p.funcion}]`).join(', ') : '';
+        return `• Evento: ${c.evento} (${c.fecha})\n  [Roles: ${personalStr} ${c.notas ? `| Notas: ${c.notas}` : ''}]`;
+      }).join('\n') || '• No se registraron coberturas en este período.';
+
+    const peridoTexto = (fechaDesde || fechaHasta) 
+        ? `\nPERÍODO REPORTE: ${fechaDesde ? fechaDesde.split('-').reverse().join('/') : 'Inicio'} al ${fechaHasta ? fechaHasta.split('-').reverse().join('/') : 'Actualidad'}` 
+        : '';
+
+    const textoInforme = `======================================================================
+📝 INFORME SEMANAL DE GESTIÓN INSTITUCIONAL
+DEPARTAMENTO DE COMUNICACIÓN - ENS DR. ALEJANDRO CARBÓ${peridoTexto}
+======================================================================
+
+1. ACCIONES Y TAREAS INTERNAS DE LA SEMANA:
+${tareasListas}
+
+1.b REGISTRO HISTÓRICO DE TAREAS ARCHIVADAS:
+${tareasHistoricas}
+
+2. GACETILLAS Y COMUNICADOS EMITIDOS:
+${gacetillasListas}
+
+3. COBERTURAS DE EVENTOS REALIZADAS:
+${coberturasListas}
+
+----------------------------------------------------------------------
+Generado automáticamente por el departamento de comunicación del Carbó.`;
+
+    setShowInformeModal(false);
+
+    const ventanaInforme = window.open('', '_blank', 'width=700,height=650');
+    ventanaInforme.document.write(`<html><head><title>Informe Semanal Carbó</title></head><body style="font-family:monospace; padding:25px; background:#f8fafc; color:#0f172a; line-height:1.5;"><h3 style="font-family:sans-serif; margin-top:0; color:#1e3a8a;">📋 Reporte Generado</h3><textarea style="width:100%; height:430px; padding:15px; font-family:monospace; font-size:12px; border:1px solid #cbd5e1; border-radius:8px; background:#fff;" readonly>${textoInforme}</textarea><br/><button onclick="window.close()" style="margin-top:15px; padding:10px 22px; font-family:sans-serif; background:#1e3a8a; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">Entendido, Cerrar</button></body></html>`);
+  };
+
+  if (!usuarioLogueado) {
+    return (
+      <div style={{ backgroundColor: '#1e3a8a', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
+        <form onSubmit={handleLogin} style={{ backgroundColor: '#fff', padding: '40px', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+          <h2 style={{ color: '#1e3a8a', margin: '0 0 10px 0', fontSize: '24px', fontWeight: 'bold' }}>Carbó Comunica</h2>
+          <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 25px 0' }}>Ingresá tu clave operativa</p>
+          <input type="password" placeholder="Clave de Acceso..." value={inputClave} onChange={(e) => setInputClave(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', marginBottom: '15px', boxSizing: 'border-box' }} required />
+          {errorLogin && <p style={{ color: '#ef4444', fontSize: '12px', margin: '0 0 15px 0', fontWeight: 'bold' }}>❌ Clave incorrecta.</p>}
+          <button type="submit" style={{ width: '100%', backgroundColor: '#1e3a8a', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Ingresar al Panel</button>
+        </form>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased">
-      
-      {/* HEADER INSTITUCIONAL */}
-      <header className="bg-gradient-to-r from-blue-900 to-indigo-950 text-white shadow-md border-b-4 border-amber-500 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-5 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-center sm:text-left">
-            <h1 className="text-2xl font-bold tracking-tight uppercase sm:text-3xl">
-              Carbó Comunica
-            </h1>
-            <p className="text-xs text-blue-200 mt-1 font-medium tracking-wide">
-              Departamento de Comunicación Institucional • ENS Dr. Alejandro Carbó
-            </p>
+    <div style={styles.container}>
+      {showInformeModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '10px', width: '350px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontFamily: 'sans-serif' }}>
+            <h3 style={{ marginTop: 0, color: '#1e3a8a' }}>📅 Filtrar Informe</h3>
+            <p style={{ fontSize: '13px', color: '#64748b' }}>Seleccioná el rango de fechas. Si dejás vacío, se incluirá todo el historial.</p>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Desde fecha:</label>
+              <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} style={styles.input} />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Hasta fecha:</label>
+              <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} style={styles.input} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button onClick={() => setShowInformeModal(false)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', backgroundColor: '#fff', borderRadius: '6px', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={generarInformeFiltrado} style={{ padding: '8px 12px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Generar Reporte</button>
+            </div>
           </div>
-          <div className="flex items-center gap-2 bg-blue-950/50 px-4 py-2 rounded-full border border-blue-800">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-xs font-semibold text-emerald-400 tracking-wider uppercase">
-              Terminal Operativa Local
-            </span>
+        </div>
+      )}
+
+      <header style={styles.header}>
+        <div style={styles.headerContent}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <img src="/escudo.png" alt="Escudo Carbó Oficial" style={styles.logoImg} />
+            <div>
+              <h1 style={styles.title}>Carbó Comunica</h1>
+              <p style={styles.subtitle}>Panel Técnico de Control • Operador/a: <strong>{usuarioLogueado}</strong></p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <button onClick={() => setShowInformeModal(true)} style={styles.buttonReportHeader}>📋 Generar Informe</button>
+            <button onClick={handleLogout} style={styles.buttonLogout}>Salir ✕</button>
+            <img src="/comunicacion.png" alt="Logo Comunicación Oficial" style={styles.logoImg} />
           </div>
         </div>
       </header>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
-        
-        {/* BANNER INTRODUCTORIO */}
-        <div className="mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Panel de Gestión de Contenidos</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Modificá, agregá o eliminá las novedades en tiempo real. Los cambios se guardan automáticamente de forma local.
-            </p>
+      <main style={styles.main}>
+        <div style={styles.banner}>
+          <h2 style={styles.bannerTitle}>🔗 Enlaces Operativos Directos</h2>
+          <p style={styles.bannerText}>Herramientas del departamento organizadas por área de trabajo:</p>
+          
+          <div style={styles.categoriesContainer}>
+            <div style={styles.categoryBox}>
+              <h4 style={styles.categoryTitle}>🏛️ Institucional y Contacto</h4>
+              <div style={styles.linksGroup}>
+                <a href="https://enscarbo-cba.infd.edu.ar/sitio/" target="_blank" rel="noreferrer" style={styles.btnSolidBlue}>🏛️ Web oficial</a>
+                <a href="https://web.whatsapp.com/" target="_blank" rel="noreferrer" style={styles.btnSolidGreen}>💬 WhatsApp Web</a>
+              </div>
+            </div>
+
+            <div style={styles.categoryBox}>
+              <h4 style={styles.categoryTitle}>📂 Gestión y Diseño</h4>
+              <div style={styles.linksGroup}>
+                <a href="https://drive.google.com/drive/u/1/my-drive" target="_blank" rel="noreferrer" style={styles.btnOutline}>📂 Google Drive Gestión</a>
+                <a href="https://www.canva.com/folder/all-designs" target="_blank" rel="noreferrer" style={styles.btnOutline}>🎨 Workspace Canva</a>
+              </div>
+            </div>
+
+            <div style={styles.categoryBox}>
+              <h4 style={styles.categoryTitle}>📱 Redes Sociales</h4>
+              <div style={styles.linksGroup}>
+                <a href="https://business.facebook.com/" target="_blank" rel="noreferrer" style={styles.btnOutlineMeta}>📊 Meta Business Suite</a>
+                <a href="https://instagram.com/carbo.comunica" target="_blank" rel="noreferrer" style={styles.btnOutline}>📸 Instagram Institucional</a>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* REJILLA DE SECCIONES (3 COLUMNAS) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          
-          {/* SECCIÓN 1: ACTIVIDADES */}
-          <section className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="font-bold text-slate-900 tracking-tight text-lg flex items-center gap-2">
-                <span className="p-1.5 bg-blue-100 text-blue-800 rounded-lg text-sm">📋</span>
-                Actividades Recientes
-              </h3>
-            </div>
-            
-            <div className="p-5 flex-grow">
-              <form 
-                onSubmit={(e) => handleAdd(e, 'actividades', inputActividad, setInputActividad, setActividades)}
-                className="mb-5 flex gap-2"
-              >
-                <input 
-                  type="text"
-                  placeholder="Nueva actividad..."
-                  value={inputActividad}
-                  onChange={(e) => setInputActividad(e.target.value)}
-                  className="flex-grow text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all"
-                />
-                <button 
-                  type="submit"
-                  className="bg-blue-900 hover:bg-blue-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors shadow-sm active:scale-95 duration-150"
-                >
-                  +
-                </button>
+        <h2 style={styles.sectionHeader}>📢 Canales de Difusión y Novedades</h2>
+        <div style={styles.grid3}>
+          <section style={styles.card}>
+            <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📋 Actividades Recientes</h3></div>
+            <div style={styles.cardBody}>
+              <form onSubmit={(e) => handleAddToCloud(e, textAct, dateAct, nivelAct, setTextAct, setDateAct, setNivelAct, 'actividades')} style={styles.formVertical}>
+                <input type="text" placeholder="¿Qué actividad?" value={textAct} onChange={(e) => setTextAct(e.target.value)} style={styles.input} required/>
+                <div style={{ display: 'flex', gap: '10px' }}><input type="date" value={dateAct} onChange={(e) => setDateAct(e.target.value)} style={{ ...styles.input, flex: 1 }}/><select value={nivelAct} onChange={(e) => setNivelAct(e.target.value)} style={{ ...styles.select, flex: 1 }}>{NIVELES_CARBO.map((n, i) => <option key={i} value={n}>{n}</option>)}</select></div>
+                <button type="submit" style={styles.buttonAddFull}>+ Cargar Actividad</button>
               </form>
-
-              {actividades.length === 0 ? (
-                <p className="text-sm text-slate-400 italic text-center py-4">No hay actividades registradas.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {actividades.map((item, index) => (
-                    <li key={index} className="flex justify-between items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 group transition-colors hover:bg-slate-100/50">
-                      <span className="text-sm text-slate-700 leading-relaxed">{item}</span>
-                      <button 
-                        onClick={() => handleRemove(index, setActividades)}
-                        className="text-slate-400 hover:text-red-600 font-medium text-xs px-2 py-1 rounded transition-colors duration-150"
-                        title="Eliminar"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <ul style={styles.list}>{actividades.map((item) => (<li key={item.id} style={styles.listItem}><div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}><span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a' }}>{item.fecha} — {item.nivel || 'Institucional'}</span><span style={styles.itemText}>{item.texto}</span></div><button onClick={() => handleRemoveFromCloud(item.id, 'actividades')} style={styles.buttonDelete}>✕</button></li>))}</ul>
             </div>
           </section>
 
-          {/* SECCIÓN 2: AGENDA */}
-          <section className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="font-bold text-slate-900 tracking-tight text-lg flex items-center gap-2">
-                <span className="p-1.5 bg-amber-100 text-amber-800 rounded-lg text-sm">📅</span>
-                Agenda Institucional
-              </h3>
-            </div>
-            
-            <div className="p-5 flex-grow">
-              <form 
-                onSubmit={(e) => handleAdd(e, 'agenda', inputAgenda, setInputAgenda, setAgenda)}
-                className="mb-5 flex gap-2"
-              >
-                <input 
-                  type="text"
-                  placeholder="Ej: 26/06 - Evento..."
-                  value={inputAgenda}
-                  onChange={(e) => setInputAgenda(e.target.value)}
-                  className="flex-grow text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                />
-                <button 
-                  type="submit"
-                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors shadow-sm active:scale-95 duration-150"
-                >
-                  +
-                </button>
+          <section style={styles.card}>
+            <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📅 Agenda Institucional</h3></div>
+            <div style={styles.cardBody}>
+              <form onSubmit={(e) => handleAddToCloud(e, textAge, dateAge, nivelAge, setTextAge, setDateAge, setNivelAge, 'agenda')} style={styles.formVertical}>
+                <input type="text" placeholder="¿Qué hito/evento en agenda?" value={textAge} onChange={(e) => setTextAge(e.target.value)} style={styles.input} required/>
+                <div style={{ display: 'flex', gap: '10px' }}><input type="date" value={dateAge} onChange={(e) => setDateAge(e.target.value)} style={{ ...styles.input, flex: 1 }}/><select value={nivelAge} onChange={(e) => setNivelAge(e.target.value)} style={{ ...styles.select, flex: 1 }}>{NIVELES_CARBO.map((n, i) => <option key={i} value={n}>{n}</option>)}</select></div>
+                <button type="submit" style={styles.buttonAddFull}>+ Cargar Agenda</button>
               </form>
-
-              {agenda.length === 0 ? (
-                <p className="text-sm text-slate-400 italic text-center py-4">No hay eventos en la agenda.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {agenda.map((item, index) => (
-                    <li key={index} className="flex justify-between items-start gap-3 bg-amber-50/40 p-3 rounded-lg border border-amber-100/40 group transition-colors hover:bg-amber-50/80">
-                      <span className="text-sm text-slate-700 leading-relaxed font-medium">{item}</span>
-                      <button 
-                        onClick={() => handleRemove(index, setAgenda)}
-                        className="text-slate-400 hover:text-red-600 font-medium text-xs px-2 py-1 rounded transition-colors duration-150"
-                        title="Eliminar"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <ul style={styles.list}>{agenda.map((item) => (<li key={item.id} style={styles.listItem}><div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}><span style={{ fontSize: '11px', fontWeight: 'bold', color: '#f59e0b' }}>{item.fecha} — {item.nivel || 'Institucional'}</span><span style={styles.itemText}><strong>{item.texto}</strong></span></div><button onClick={() => handleRemoveFromCloud(item.id, 'agenda')} style={styles.buttonDelete}>✕</button></li>))}</ul>
             </div>
           </section>
 
-          {/* SECCIÓN 3: GACETILLAS */}
-          <section className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden transition-all duration-200 hover:shadow-md">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="font-bold text-slate-900 tracking-tight text-lg flex items-center gap-2">
-                <span className="p-1.5 bg-purple-100 text-purple-800 rounded-lg text-sm">📰</span>
-                Gacetillas emitidas
-              </h3>
-            </div>
-            
-            <div className="p-5 flex-grow">
-              <form 
-                onSubmit={(e) => handleAdd(e, 'gacetillas', inputGacetilla, setInputGacetilla, setGacetillas)}
-                className="mb-5 flex gap-2"
-              >
-                <input 
-                  type="text"
-                  placeholder="Título de gacetilla..."
-                  value={inputGacetilla}
-                  onChange={(e) => setInputGacetilla(e.target.value)}
-                  className="flex-grow text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all"
-                />
-                <button 
-                  type="submit"
-                  className="bg-purple-900 hover:bg-purple-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors shadow-sm active:scale-95 duration-150"
-                >
-                  +
-                </button>
+          <section style={styles.card}>
+            <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📰 Gacetillas Emitidas</h3></div>
+            <div style={styles.cardBody}>
+              <form onSubmit={(e) => handleAddToCloud(e, textGac, dateGac, nivelGac, setTextGac, setDateGac, setNivelGac, 'gacetillas')} style={styles.formVertical}>
+                <input type="text" placeholder="Título o asunto de la gacetilla..." value={textGac} onChange={(e) => setTextGac(e.target.value)} style={styles.input} required/>
+                <div style={{ display: 'flex', gap: '10px' }}><input type="date" value={dateGac} onChange={(e) => setDateGac(e.target.value)} style={{ ...styles.input, flex: 1 }}/><select value={nivelGac} onChange={(e) => setNivelGac(e.target.value)} style={{ ...styles.select, flex: 1 }}>{NIVELES_CARBO.map((n, i) => <option key={i} value={n}>{n}</option>)}</select></div>
+                <button type="submit" style={styles.buttonAddFull}>+ Cargar Gacetilla</button>
               </form>
-
-              {gacetillas.length === 0 ? (
-                <p className="text-sm text-slate-400 italic text-center py-4">No hay gacetillas emitidas.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {gacetillas.map((item, index) => (
-                    <li key={index} className="flex justify-between items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 group transition-colors hover:bg-slate-100/50">
-                      <span className="text-sm text-slate-700 leading-relaxed">{item}</span>
-                      <button 
-                        onClick={() => handleRemove(index, setGacetillas)}
-                        className="text-slate-400 hover:text-red-600 font-medium text-xs px-2 py-1 rounded transition-colors duration-150"
-                        title="Eliminar"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <ul style={styles.list}>{gacetillas.map((item) => (<li key={item.id} style={styles.listItem}><div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}><span style={{ fontSize: '11px', fontWeight: 'bold', color: '#7c3aed' }}>{item.fecha} — {item.nivel || 'Institucional'}</span><span style={styles.itemText}>{item.texto}</span></div><button onClick={() => handleRemoveFromCloud(item.id, 'gacetillas')} style={styles.buttonDelete}>✕</button></li>))}</ul>
             </div>
           </section>
+        </div>
 
+        <h2 style={styles.sectionHeader}>📹 Planificación y Cobertura de Eventos</h2>
+        <div style={styles.card}>
+          <div style={styles.cardHeader}><h3 style={styles.cardTitle}>📍 Registro de Roles y Trabajos Específicos del Personal</h3></div>
+          <div style={styles.cardBody}>
+            <form onSubmit={handleAddCobertura} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '25px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                <input type="date" value={cobFecha} onChange={(e) => setCobFecha(e.target.value)} style={styles.input} required/>
+                <input type="text" placeholder="Nombre del Evento (Ej: Acto del Día de la Bandera)" value={cobEvento} onChange={(e) => setCobEvento(e.target.value)} style={{...styles.input, gridColumn: 'span 2'}} required/>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
+                <input type="text" placeholder="Notas e indicaciones generales" value={cobNotas} onChange={(e) => setCobNotas(e.target.value)} style={styles.input}/>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', borderTop: '1px dashed #cbd5e1', paddingTop: '10px' }}><select value={cobPersona1} onChange={(e) => setCobPersona1(e.target.value)} style={styles.select}>{PERSONAL_AUTORIZADO.map((p, i) => <option key={i} value={p}>{p}</option>)}</select><input type="text" placeholder="Trabajo realizado por Personal 1 (Ej: Saco fotos)" value={cobFuncion1} onChange={(e) => setCobFuncion1(e.target.value)} style={styles.input}/></div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}><select value={cobPersona2} onChange={(e) => setCobPersona2(e.target.value)} style={styles.select}>{PERSONAL_AUTORIZADO.map((p, i) => <option key={i} value={p}>{p}</option>)}</select><input type="text" placeholder="Trabajo realizado por Personal 2 (Ej: Maestra de ceremonias)" value={cobFuncion2} onChange={(e) => setCobFuncion2(e.target.value)} style={styles.input}/></div>
+              <button type="submit" style={{ ...styles.buttonAdd, alignSelf: 'flex-end', padding: '10px 25px' }}>Registrar Cobertura</button>
+            </form>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
+              {coberturas.map(c => (
+                <div key={c.id} style={{ padding: '20px', borderRadius: '8px', borderLeft: '5px solid #1e3a8a', backgroundColor: '#f8fafc', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}><h4 style={{ margin: 0, fontSize: '15px', color: '#1e3a8a', fontWeight: 'bold' }}>🎬 {c.evento} <span style={{fontSize: '12px', color: '#64748b', fontWeight: 'normal'}}>({c.fecha})</span></h4><button onClick={() => handleRemoveFromCloud(c.id, 'coberturas')} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '14px' }}>✕</button></div>
+                  <div style={{ backgroundColor: '#ffffff', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '10px' }}><p style={{ margin: '0 0 5px 0', fontSize: '12px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' }}>Trabajo Desarrollado:</p>{c.personal && c.personal.map((p, i) => (<p key={i} style={{ margin: '4px 0', fontSize: '13px', color: '#334155' }}>👤 <strong>{p.nombre}:</strong> {p.funcion || p.function}</p>))}</div>
+                  {c.notas && <p style={{ margin: '0', fontSize: '12px', color: '#64748b' }}>📝 <em>Notas: {c.notas}</em></p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <h2 style={styles.sectionHeader}>🛠️ Organizador de Tareas del Equipo</h2>
+        <div style={styles.card}>
+          <div style={styles.cardHeader}><h3 style={styles.cardTitle}>🎯 Seguimiento Operativo de Prioridades del Equipo</h3></div>
+          <div style={styles.cardBody}>
+            <form onSubmit={handleAddTarea} style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '25px', border: '1px solid #e2e8f0', alignItems: 'center' }}>
+              <input type="text" placeholder="Asunto o descripción de la tarea..." value={nuevaTareaTexto} onChange={(e) => setNuevaTareaTexto(e.target.value)} style={{ ...styles.input, flex: '2 1 200px' }} required/>
+              <select value={tareaResp} onChange={(e) => setTareaResp(e.target.value)} style={styles.select}>{PERSONAL_AUTORIZADO.map((p, i) => <option key={i} value={p}>{p}</option>)}</select>
+              <select value={columnaInicial} onChange={(e) => setColumnaInicial(e.target.value)} style={styles.select}><option value="pendiente">Cargar como: Pendiente</option><option value="progreso">Cargar como: En Proceso</option><option value="completado">Cargar como: Ya Finalizada</option></select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ fontSize: '12px', color: '#475569', fontWeight: '500' }}>Solicitado:</span><input type="date" value={tareaSolicitud} onChange={(e) => setTareaSolicitud(e.target.value)} style={styles.input} required/></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ fontSize: '12px', color: '#475569', fontWeight: '500' }}>Límite:</span><input type="date" value={tareaLimite} onChange={(e) => setTareaLimite(e.target.value)} style={styles.input} required/></div>
+              {columnaInicial === 'completado' && (<div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', padding: '6px', borderRadius: '6px', border: '1px solid #bbf7d0' }}><span style={{ fontSize: '12px', color: '#166534', fontWeight: 'bold' }}>Finalizada:</span><input type="date" value={tareaFinalizacionManual} onChange={(e) => setTareaFinalizacionManual(e.target.value)} style={styles.input} required/></div>)}
+              <button type="submit" style={styles.buttonAdd}>Registrar Tarea</button>
+            </form>
+            <div style={styles.kanbanGrid}>
+              <div style={styles.kanbanColumn}>
+                <h4 style={{ ...styles.kanbanColTitle, borderBottom: '3px solid #ef4444' }}>📌 Pendientes</h4>
+                {tareas.filter(t => t.columna === 'pendiente').map(t => (<div key={t.id} style={styles.kanbanItem}><p style={styles.kanbanTaskText}>{t.texto}</p><p style={styles.kanbanMeta}>👤 <strong>{t.responsable}</strong></p><p style={styles.kanbanMeta}>📅 Solicitado: <span style={{ color: '#475569' }}>{t.fechaSolicitud}</span></p><p style={styles.kanbanMeta}>📅 Límite: <span style={{ color: '#ef4444', fontWeight: 'bold' }}>{t.fechaLimite}</span></p><div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', alignItems: 'center' }}><button type="button" onClick={() => handleMoverTarea(t.id, 'progreso', t.fechaRealizada)} style={styles.actionTaskBtn}>Iniciar Tarea ➡️</button><button type="button" onClick={() => handleRemoveFromCloud(t.id, 'tareas')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', padding: 0 }}>Eliminar</button></div></div>))}
+              </div>
+              <div style={styles.kanbanColumn}>
+                <h4 style={{ ...styles.kanbanColTitle, borderBottom: '3px solid #f59e0b' }}>⚡ En Proceso</h4>
+                {tareas.filter(t => t.columna === 'progreso').map(t => (<div key={t.id} style={styles.kanbanItem}><p style={styles.kanbanTaskText}>{t.texto}</p><p style={styles.kanbanMeta}>👤 <strong>{t.responsable}</strong></p><p style={styles.kanbanMeta}>📅 Solicitado: <span style={{ color: '#475569' }}>{t.fechaSolicitud}</span></p><p style={styles.kanbanMeta}>📅 Límite: <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{t.fechaLimite}</span></p><div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}><button type="button" onClick={() => handleMoverTarea(t.id, 'pendiente', t.fechaRealizada)} style={styles.actionTaskBtn}>⬅️ Devolver</button><button type="button" onClick={() => handleMoverTarea(t.id, 'completado', t.fechaRealizada)} style={{ ...styles.actionTaskBtn, color: '#10b981' }}>Finalizar ✔️</button></div></div>))}
+              </div>
+              <div style={styles.kanbanColumn}>
+                <h4 style={{ ...styles.kanbanColTitle, borderBottom: '3px solid #10b981' }}>🎉 Finalizadas</h4>
+                {tareas.filter(t => t.columna === 'completado').map(t => (<div key={t.id} style={{ ...styles.kanbanItem, backgroundColor: '#f0fdf4' }}><p style={{ ...styles.kanbanTaskText, textDecoration: 'line-through', color: '#166534' }}>{t.texto}</p><p style={styles.kanbanMeta}>👤 <strong>{t.responsable}</strong></p><p style={styles.kanbanMeta}>📅 Solicitado: <span style={{ color: '#475569' }}>{t.fechaSolicitud}</span></p><p style={styles.kanbanMeta}>📅 Finalizada: <span style={{ color: '#10b981', fontWeight: 'bold' }}>{t.fechaRealizada}</span></p><div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}><button type="button" onClick={() => handleMoverTarea(t.id, 'progreso', t.fechaRealizada)} style={styles.actionTaskBtn}>🔄 Reabrir</button><button type="button" onClick={() => handleArchivarTarea(t.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '11px' }}>Archivar</button></div></div>))}
+              </div>
+            </div>
+          </div>
         </div>
       </main>
 
-      {/* FOOTER INSTITUCIONAL */}
-      <footer className="bg-slate-900 text-slate-400 text-sm border-t border-slate-800 mt-12">
-        <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-center md:text-left">
-            <p className="font-semibold text-slate-200">Escuela Normal Superior Dr. Alejandro Carbó</p>
-            <p className="text-xs text-slate-500 mt-0.5">Córdoba, Argentina • Plataforma de Uso Interno</p>
-          </div>
-          
-          {/* REDES SOCIALES INSTITUCIONALES */}
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 text-center sm:text-left">
-            <div className="flex items-center gap-2 justify-center sm:justify-start">
-              <span className="text-slate-500 font-bold">IG:</span>
-              <a href="https://instagram.com/carbo.comunica" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline transition-all">
-                @carbo.comunica
-              </a>
-            </div>
-            <div className="flex items-center gap-2 justify-center sm:justify-start">
-              <span className="text-slate-500 font-bold">FB:</span>
-              <span className="text-slate-300">
-                Escuela Normal Superior Dr. Alejandro Carbó
-              </span>
-            </div>
-            <div className="flex items-center gap-2 justify-center sm:justify-start">
-              <span className="text-slate-500 font-bold">Web:</span>
-              <span className="text-slate-300 italic">
-                Sitio web institucional
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="bg-slate-950 text-center py-3 text-xs text-slate-600 tracking-wider">
-          Desarrollado con Software de Código Abierto y Licencia Libre
+      <footer style={styles.footer}>
+        <div style={styles.footerContent}>
+          <div><p style={styles.footerSchool}>Escuela Normal Superior Dr. Alejandro Carbó</p><p style={styles.footerLocation}>Córdoba, Argentina • Panel de Control Técnico Autorizado</p></div>
+          <div style={styles.footerLinks}><p><strong>IG:</strong> <a href="https://instagram.com/carbo.comunica" target="_blank" rel="noreferrer" style={styles.link}>@carbo.comunica</a></p><p><strong>FB:</strong> Escuela Normal Superior Dr. Alejandro Carbó</p></div>
         </div>
       </footer>
-
     </div>
   );
 }
+
+// --- ESTILOS VISUALES EN LÍNEA ---
+const styles = {
+  container: { fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', backgroundColor: '#f1f5f9', minHeight: '100vh', display: 'flex', flexDirection: 'column', color: '#334155', margin: 0 },
+  header: { backgroundColor: '#1e3a8a', color: '#ffffff', padding: '15px 40px', borderBottom: '4px solid #f59e0b', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' },
+  headerContent: { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' },
+  title: { margin: 0, fontSize: '24px', fontWeight: 'bold', letterSpacing: '-0.5px' },
+  subtitle: { margin: '3px 0 0 0', fontSize: '12px', color: '#93c5fd' },
+  logoImg: { height: '65px', width: 'auto', objectFit: 'contain' },
+  main: { flexGrow: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '30px 20px' },
+  banner: { backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+  bannerTitle: { margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 'bold' },
+  bannerText: { margin: '4px 0 15px 0', fontSize: '13px', color: '#64748b' },
+  
+  categoriesContainer: { display: 'flex', flexWrap: 'wrap', gap: '20px' },
+  categoryBox: { backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '15px', flex: '1 1 250px' },
+  categoryTitle: { margin: '0 0 12px 0', fontSize: '13px', color: '#334155', fontWeight: 'bold', borderBottom: '2px solid #cbd5e1', paddingBottom: '6px' },
+  linksGroup: { display: 'flex', flexWrap: 'wrap', gap: '10px' },
+  
+  btnSolidBlue: { textDecoration: 'none', backgroundColor: '#1e3a8a', color: '#ffffff', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', boxShadow: '0 2px 4px rgba(30,58,138,0.2)' },
+  btnSolidGreen: { textDecoration: 'none', backgroundColor: '#16a34a', color: '#ffffff', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', boxShadow: '0 2px 4px rgba(22,163,74,0.2)' },
+  btnOutline: { textDecoration: 'none', backgroundColor: '#ffffff', color: '#1e3a8a', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: '1px solid #cbd5e1' },
+  btnOutlineMeta: { textDecoration: 'none', backgroundColor: '#f0f9ff', color: '#0369a1', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: '1px solid #bae6fd' },
+
+  buttonReportHeader: { backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(16,185,129,0.2)' },
+  buttonLogout: { backgroundColor: 'transparent', color: '#93c5fd', border: '1px solid #3b82f6', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' },
+  sectionHeader: { fontSize: '18px', fontWeight: 'bold', color: '#1e3a8a', marginTop: '40px', marginBottom: '15px', borderLeft: '4px solid #f59e0b', paddingLeft: '10px' },
+  grid3: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' },
+  card: { backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '20px' },
+  cardHeader: { backgroundColor: '#f8fafc', padding: '14px 20px', borderBottom: '1px solid #e2e8f0' },
+  cardTitle: { margin: 0, fontSize: '15px', fontWeight: 'bold', color: '#1e293b' },
+  cardBody: { padding: '20px', flexGrow: 1 },
+  formVertical: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' },
+  input: { padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '13px', outline: 'none', backgroundColor: '#fff' },
+  select: { padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '13px', backgroundColor: '#fff', outline: 'none', cursor: 'pointer' },
+  buttonAddFull: { backgroundColor: '#1e3a8a', color: '#ffffff', border: 'none', padding: '9px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' },
+  buttonAdd: { backgroundColor: '#1e3a8a', color: '#ffffff', border: 'none', padding: '9px 18px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' },
+  list: { listStyle: 'none', padding: 0, margin: 0 },
+  listItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', backgroundColor: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '8px', marginBottom: '8px', gap: '10px' },
+  itemText: { fontSize: '13px', color: '#334155', lineHeight: '1.4' },
+  buttonDelete: { backgroundColor: 'transparent', color: '#94a3b8', border: 'none', fontSize: '13px', cursor: 'pointer', padding: '2px 6px' },
+  kanbanGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '15px' },
+  kanbanColumn: { backgroundColor: '#f8fafc', borderRadius: '8px', padding: '15px', border: '1px solid #e2e8f0' },
+  kanbanColTitle: { margin: '0 0 15px 0', fontSize: '14px', fontWeight: 'bold', color: '#334155', paddingBottom: '5px' },
+  kanbanItem: { backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px', marginBottom: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
+  kanbanTaskText: { margin: '0 0 8px 0', fontSize: '13px', fontWeight: '500', color: '#1e293b' },
+  kanbanMeta: { margin: '2px 0', fontSize: '11px', color: '#64748b' },
+  actionTaskBtn: { background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', padding: 0 },
+  footer: { backgroundColor: '#0f172a', color: '#94a3b8', padding: '30px 20px', marginTop: '50px', borderTop: '1px solid #1e293b' },
+  footerContent: { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px', fontSize: '13px' },
+  link: { color: '#38bdf8', textDecoration: 'none' }
+};
